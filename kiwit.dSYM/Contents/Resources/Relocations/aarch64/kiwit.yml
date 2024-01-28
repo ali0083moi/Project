@@ -1,0 +1,11 @@
+---
+triple:          'arm64-apple-darwin'
+binary-path:     kiwit
+relocations:
+  - { offsetInCU: 0x26, offset: 0x26, size: 0x8, addend: 0x0, symName: _logo_print, symObjAddr: 0x0, symBinAddr: 0x100001254, symSize: 0xE08 }
+  - { offsetInCU: 0x42, offset: 0x42, size: 0x8, addend: 0x0, symName: _logo_print, symObjAddr: 0x0, symBinAddr: 0x100001254, symSize: 0xE08 }
+  - { offsetInCU: 0x57, offset: 0x57, size: 0x8, addend: 0x0, symName: _create_configs, symObjAddr: 0xE08, symBinAddr: 0x10000205C, symSize: 0x18C }
+  - { offsetInCU: 0x9B, offset: 0x9B, size: 0x8, addend: 0x0, symName: _run_init, symObjAddr: 0xF94, symBinAddr: 0x1000021E8, symSize: 0x274 }
+  - { offsetInCU: 0x11E, offset: 0x11E, size: 0x8, addend: 0x0, symName: _config_root, symObjAddr: 0x1208, symBinAddr: 0x10000245C, symSize: 0xD4 }
+  - { offsetInCU: 0x15E, offset: 0x15E, size: 0x8, addend: 0x0, symName: _main, symObjAddr: 0x12DC, symBinAddr: 0x100002530, symSize: 0x140 }
+...

@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "C/C++ Runner: Debug Session",
+      "type": "lldb",
+      "request": "launch",
+      "args": [],
+      "cwd": "/Users/ali/Documents/Daaneshgah/Term 1/Mabaani Barnaame Nevisi/Project",
+      "program": "/Users/ali/Documents/Daaneshgah/Term 1/Mabaani Barnaame Nevisi/Project/build/Debug/outDebug"
+    }
+  ]
+}
