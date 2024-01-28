@@ -1,0 +1,12 @@
+config
+init mamad jafar
+add
+reset
+status
+commit
+set
+replace
+remove
+log
+branch
+checkout

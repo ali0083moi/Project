@@ -13,6 +13,27 @@ char *root_email;
 char *root_username;
 char *root_path = "/Users/ali/Documents/Daaneshgah/Term1/FOP/Project/data/";
 
+//char *find_source() {
+//    char cwd[2024];
+//    if (getcwd(cwd, sizeof(cwd)) == NULL) return "NULL";
+//    char *ret = (char *) malloc(2024);
+//    strcpy(ret, cwd);
+//    char *p = strstr(ret, ".kiwit");
+//    p[6] = '\0';
+//    return ret;
+//}
+
+void copy_file(char *source, char *destination) {
+    FILE *file1 = fopen(source, "r");
+    FILE *file2 = fopen(destination, "w");
+    char *line = malloc(1000);
+    while (fgets(line, 1000, file1) != NULL) {
+        fprintf(file2, "%s", line);
+    }
+    fclose(file1);
+    fclose(file2);
+}
+
 char *path_maker(char *path, char *file_name) {
     char *new_path = malloc(strlen(path) + strlen(file_name) + 1);
     strcpy(new_path, path);
@@ -25,8 +46,8 @@ int create_configs(char *username, char *email) {
     if (file == NULL)
         return 1;
 
-    fprintf(file, "%s", username);
-    fprintf(file, "%s", email);
+    fprintf(file, "%s\n", username);
+    fprintf(file, "%s\n", email);
     fprintf(file, "last_commit_ID: %d\n", 0);
     fprintf(file, "current_commit_ID: %d\n", 0);
     fprintf(file, "branch: %s", "master");
@@ -46,6 +67,8 @@ int create_configs(char *username, char *email) {
 
     file = fopen(".kiwit/tracks", "w");
     fclose(file);
+
+    copy_file(path_maker(root_path, "root_alias"), ".kiwit/alias");
 
     return 0;
 }
@@ -74,8 +97,6 @@ int run_init(int argc, char *const argv[]) {
     }
     fclose(file);
     if ((root_username != NULL && (int) root_username[0] != 0) && (root_email != NULL && (int) root_email[0] != 0)) {
-        printf("root_username: %s", root_username);
-        printf("root_email: %d", (int) root_email[0]);
         char cwd[1024];
         if (getcwd(cwd, sizeof(cwd)) == NULL)
             return 1;
@@ -137,7 +158,7 @@ int run_init(int argc, char *const argv[]) {
     }
 }
 
-void config_root(int argc, const char *argv[]) {
+void config_alias(int argc, const char *argv[]) {
     // line 0 = username
     // line 1 = email
     int line_number = 0;
@@ -145,6 +166,72 @@ void config_root(int argc, const char *argv[]) {
     FILE *file;
     FILE *file2;
     if (strcmp(argv[2], "-global") == 0) {
+        if (argv[4] == NULL || argv[5] == NULL) {
+            printf(_SGR_REDF _SGR_BOLD "invalid command\n"_SGR_RESET);
+            return;
+        } else {
+            file = fopen(path_maker(root_path, "root_alias"), "r");
+            if (file == NULL) {
+                printf("Error opening file!\n");
+                exit(1);
+            }
+            file2 = fopen(path_maker(root_path, "root_alias2"), "w");
+            char *line = malloc(1000);
+            while (fgets(line, 1000, file) != NULL) {
+                if (line[strlen(line) - 1] == '\n') {
+                    line[strlen(line) - 1] = '\0';
+                }
+                fprintf(file2, "%s", line);
+                if (strstr(line, argv[4]) != NULL) {
+                    fprintf(file2, " %s", argv[5]);
+                }
+                fprintf(file2, "\n");
+            }
+        }
+    } else {
+        if (argv[3] == NULL || argv[4] == NULL) {
+            printf(_SGR_REDF _SGR_BOLD "invalid command\n"_SGR_RESET);
+            return;
+        } else {
+            file = fopen(".kiwit/alias", "r");
+            if (file == NULL) {
+                printf("Error opening file!\n");
+                exit(1);
+            }
+            file2 = fopen(".kiwit/alias2", "w");
+        }
+        char *line = malloc(1000);
+        while (fgets(line, 1000, file) != NULL) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            fprintf(file2, "%s", line);
+            if (strstr(line, argv[3]) != NULL) {
+                fprintf(file2, " %s", argv[4]);
+            }
+            fprintf(file2, "\n");
+        }
+    }
+    fclose(file);
+    fclose(file2);
+    if (strcmp(argv[2], "-global") == 0) {
+        remove(path_maker(root_path, "root_alias"));
+        rename(path_maker(root_path, "root_alias2"),
+               path_maker(root_path, "root_alias"));
+    } else {
+        remove(".kiwit/alias");
+        rename(".kiwit/alias2", ".kiwit/alias");
+    }
+}
+
+void config_root(int argc, const char *argv[]) {
+    // line 0 = username
+    // line 1 = email
+    int line_number = 0;
+    bool is_email = false;
+    FILE *file;
+    FILE *file2;
+    if (strcmp(argv[2], "-global") == 0 && (strcmp(argv[3], "user.name") == 0 || strcmp(argv[3], "user.email") == 0)) {
         if (argv[4] == NULL) {
             printf(_SGR_REDF _SGR_BOLD "invalid command\n"_SGR_RESET);
             return;
@@ -206,10 +293,25 @@ int main(int argc, const char *argv[]) {
         printf("Usage : %s command\n", argv[0]);
         return 1;
     }
-    if (strcmp(argv[1], "init") == 0) {
+    char line[1000];
+    char *command = calloc(20, sizeof(char));
+    FILE *file = fopen(path_maker(root_path, "root_alias"), "r");
+    while (fgets(line, 1000, file) != NULL) {
+        if (strstr(line, argv[1]) != NULL) {
+            sscanf(line, "%s", command);
+            break;
+        }
+    }
+    fclose(file);
+    if (strcmp(command, "init") == 0) {
         return run_init(argc, argv);
-    } else if (strcmp(argv[1], "config") == 0) {
-        config_root(argc, argv);
+    } else if (strcmp(command, "config") == 0 && argc >= 3) {
+        if (strcmp(argv[3], "alias") == 0 || strcmp(argv[2], "alias") == 0) {
+            config_alias(argc, argv);
+        }
+        else {
+            config_root(argc, argv);
+        }
     } else if (strcmp(argv[1], "--start") == 0) {
         logo_print();
     } else if (strcmp(argv[1], "p") == 0) {
@@ -219,3 +321,4 @@ int main(int argc, const char *argv[]) {
     }
     return 0;
 }
+
