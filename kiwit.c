@@ -345,7 +345,7 @@ void config_alias(int argc, const char *argv[]) {
     FILE *file2;
     if (strcmp(argv[2], "-global") == 0) {
         if (argv[4] == NULL || argv[5] == NULL) {
-            printf(_SGR_REDF _SGR_BOLD "invalid command\n"_SGR_RESET);
+            printf(_SGR_REDB "invalid command\n"_SGR_RESET);
             return;
         }
         file = fopen(path_maker(root_path, "root_alias"), "r");
@@ -397,9 +397,10 @@ void config_alias(int argc, const char *argv[]) {
                    path_maker(each_ripo, "alias"));
         }
         fclose(ripo_list_file);
+        printf(_SGR_GREENF"The alias has been added successfully globally.\n"_SGR_RESET);
     } else {
         if (argv[3] == NULL || argv[4] == NULL) {
-            printf(_SGR_REDF _SGR_BOLD "invalid command\n"_SGR_RESET);
+            printf(_SGR_REDB "invalid command\n"_SGR_RESET);
             return;
         } else {
             file = fopen(".kiwit/alias", "r");
@@ -424,6 +425,7 @@ void config_alias(int argc, const char *argv[]) {
         fclose(file2);
         remove(".kiwit/alias");
         rename(".kiwit/alias2", ".kiwit/alias");
+        printf(_SGR_GREENF"The alias has been added successfully in this project.\n"_SGR_RESET);
     }
 }
 
@@ -435,7 +437,7 @@ void config_root(int argc, const char *argv[]) {
     if (strcmp(argv[2], "-global") == 0 &&
         (strcmp(argv[3], "user.name") == 0 || strcmp(argv[3], "user.email") == 0)) {
         if (argv[4] == NULL) {
-            printf(_SGR_REDF _SGR_BOLD "invalid command\n"_SGR_RESET);
+            printf(_SGR_REDB "invalid command\n"_SGR_RESET);
             return;
         }
         //printf("%s\n", path_maker(root_path, "root_config"));
@@ -514,6 +516,7 @@ void config_root(int argc, const char *argv[]) {
                    path_maker(each_ripo, "config"));
         }
         fclose(ripo_list_file);
+        printf(_SGR_GREENF"The config has been added successfully globally.\n"_SGR_RESET);
     } else {
         if (argv[3] == NULL) {
             printf(_SGR_REDF _SGR_BOLD "invalid command\n"_SGR_RESET);
@@ -550,6 +553,7 @@ void config_root(int argc, const char *argv[]) {
         fclose(file2);
         remove(".kiwit/config");
         rename(".kiwit/config2", ".kiwit/config");
+        printf(_SGR_GREENF"The config has been added successfully.\n"_SGR_RESET);
     }
 }
 
@@ -613,7 +617,6 @@ int run_add_dir(int argc, char *const argv[], char *file_path, int i) {
     run_add_file(outputFile);
     fclose(outputFile);
     system("rm output.txt");
-
 }
 
 int run_add(int argc, char *const argv[]) {
@@ -712,7 +715,7 @@ int main(int argc, const char *argv[]) {
         }
         fclose(file);
     }
-    if (strcmp(command, "init") == 0) {
+    if (strcmp(command, "init") == 0 && argc == 2) {
         return run_init(argc, argv);
     } else if (strcmp(command, "config") == 0 && argc >= 3) {
         if (strcmp(argv[3], "alias") == 0 || strcmp(argv[2], "alias") == 0) {
@@ -720,7 +723,7 @@ int main(int argc, const char *argv[]) {
         } else {
             config_root(argc, argv);
         }
-    } else if (strcmp(command, "--start") == 0) {
+    } else if (strcmp(command, "--start") == 0 && argc == 2) {
         logo_print();
     } else if (strcmp(command, "add") == 0 && argc >= 3) {
         return run_add(argc, argv);
