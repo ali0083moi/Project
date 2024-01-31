@@ -30,7 +30,34 @@ char *root_path = "/Users/ali/Documents/Daaneshgah/Term1/FOP/Project/data/";
 //    return hash;
 //}
 
-// Sarina
+void explore_directory(const char *dirPath, FILE *outputFile) {
+    DIR *directory = opendir(dirPath);
+    if (directory == NULL) {
+        perror(_SGR_REDF"Unable to open directory!\n"_SGR_RESET);
+        exit(EXIT_FAILURE);
+    }
+    struct dirent *entry;
+    while ((entry = readdir(directory)) != NULL) {
+        if (entry->d_type == DT_DIR) {
+            // Ignore "." and ".." directories
+            if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+                char newPath[1024];
+                snprintf(newPath, sizeof(newPath), "%s/%s", dirPath, entry->d_name);
+
+                // Recursively explore subdirectories
+                explore_directory(newPath, outputFile);
+            }
+        } else if (entry->d_type == DT_REG) {
+            // Regular file
+            if (strcmp(entry->d_name, ".DS_Store") != 0) {
+                fprintf(outputFile, "%s/%s\n", dirPath, entry->d_name);
+            }
+        }
+    }
+    closedir(directory);
+}
+
+//Sarina
 int find_file_in_stage(char file_name[]) {
     struct dirent *entry;
     char file_2[200];
@@ -39,7 +66,7 @@ int find_file_in_stage(char file_name[]) {
         return 1;
     }
     snprintf(file_2, sizeof(file_2), "%s/%s", cwd, ".kiwit/staging_files");
-    //printf("%s\n", file_2);
+    //printf("%s/%s\n", file_2,file_name);
     DIR *dir = opendir(file_2);
     while ((entry = readdir(dir)) != NULL) {
         if (entry->d_type == DT_REG) {
@@ -49,6 +76,69 @@ int find_file_in_stage(char file_name[]) {
         }
     }
     return 0;
+}
+
+void add_n_recursive(char *dir_path, int depth, int max_depth) {
+    DIR *dir = opendir(dir_path);
+    struct dirent *entry;
+    char entry_path[1024];
+    char out[1024];
+    out[0] = '\0';
+    if (depth == max_depth) {
+        return;
+    }
+    while ((entry = readdir(dir)) != NULL) {
+
+        if (entry->d_type == DT_DIR) {
+            // Ignore "." and ".." directories
+            if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0 &&
+                strcmp(entry->d_name, ".kiwit") != 0) {
+                for (int i = 0; i < depth; ++i) {
+                    strcat(out, "\t");
+                }
+                strcat(out, "├── ");
+                strcpy(entry_path, dir_path);
+                strcat(entry_path, "/");
+                strcat(entry_path, entry->d_name);
+                strcat(out, entry->d_name);
+
+                printf("%s\n", out);
+                out[0] = '\0';
+                add_n_recursive(entry_path, depth + 1, max_depth);
+
+                //closedir(entry_dir);
+            }
+
+        } else if (entry->d_type == DT_REG) {
+            // Regular file
+            if (strcmp(entry->d_name, ".DS_Store") != 0) {
+                for (int i = 0; i < depth; ++i) {
+                    strcat(out, "\t");
+                }
+                strcat(out, "├── ");
+                strcat(out, entry->d_name);
+                if (find_file_in_stage(entry->d_name)) {
+                    printf(_SGR_GREENF"%s\n", out);
+                    printf(_SGR_RESET);
+                } else {
+                    printf(_SGR_REDF"%s\n", out);
+                    printf(_SGR_RESET);
+                }
+                out[0] = '\0';
+            }
+        }
+    }
+    //closedir(dir);
+}
+
+void add_n(char *path, int max_depth) {
+    printf(_C_L_PURPLE"Hints:\n"_SGR_RESET);
+    printf("The directories are White.\n");
+    printf(_SGR_GREENF"Staged files are Green.\n"_SGR_RESET);
+    printf(_SGR_REDF"Un-staged files are Red.\n"_SGR_RESET);
+    printf("\n");
+    add_n_recursive(path, 0, max_depth);
+    printf("\n");
 }
 
 int file_content_checker(FILE *file1, FILE *file2) {
@@ -126,7 +216,7 @@ int create_configs(char *username, char *email) {
     file = fopen(".kiwit/tracks", "w");
     fclose(file);
 
-    file = fopen(".kiwit/staging", "w");
+    file = fopen(".kiwit/staging_2", "w");
     fclose(file);
 
     file = fopen(".kiwit/deleted", "w");
@@ -464,85 +554,67 @@ void config_root(int argc, const char *argv[]) {
 }
 
 
-//int run_add_file() {
-//    char copied_file_address[1000];
-//    strcpy(copied_file_address, ".kiwit/staging_files/");
-//    strcat(copied_file_address, argv[i]);
-//    FILE *file1;
-//    FILE *file2;
-//    if (find_file_in_stage(argv[i]) == 1) {
-//        // if: file the same: file_content_checker = 1 // else: file_content_checker = 0
-//        file1 = fopen(path_maker(find_source(), copied_file_address), "r");
-//        file2 = fopen(file_path, "r");
-//        int is_same_content = file_content_checker(file1, file2);
-//        fclose(file1);
-//        fclose(file2);
-//        if (is_same_content) {
-//            printf(_SGR_REDF "%s is already added.\n", argv[i]);
-//            printf(_SGR_RESET);
-//            continue;
-//        } else {
-//            copy_file(file_path, path_maker(find_source(), copied_file_address));
-//            printf(_SGR_GREENF "%s successfully added.\n", argv[i]);
-//            printf(_SGR_RESET);
-//        }
-//    } else {
-//        copy_file(file_path, path_maker(find_source(), copied_file_address));
-//        FILE *staging_file = fopen(path_maker(find_source(), ".kiwit/staging"), "a");
-//        fprintf(staging_file, "%s\n", path_maker(find_source(), copied_file_address));
-//        fclose(staging_file);
-//        printf(_SGR_GREENF "%s successfully added.\n", argv[i]);
-//        printf(_SGR_RESET);
-//    }
-//}
+int run_add_file(FILE *output_file) {
+    char *line = malloc(2000);
+    while (fgets(line, 2000, output_file) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        //printf("%s\n", line);
+        // write a strtok() func on the line
+        char *file_path = malloc(2000);
+        strcpy(file_path, line);
+        char *file_name = malloc(2000);
+        strcpy(file_name, line);
+        int i = strlen(file_name), j = 0;
+        while (file_name[i] != '/') {
+            j++;
+            i--;
+        }
+        memmove(file_name, file_path + i + 1, j * sizeof(char));
+        //printf("%s\n", file_name);
+        char copied_file_address[1000];
+        strcpy(copied_file_address, ".kiwit/staging_files/");
+        strcat(copied_file_address, file_name);
+        FILE *file1;
+        FILE *file2;
+        if (find_file_in_stage(file_name) == 1) {
+            // if: file the same: file_content_checker = 1 // else: file_content_checker = 0
+            file1 = fopen(path_maker(find_source(), copied_file_address), "r");
+            file2 = fopen(file_path, "r");
+            int is_same_content = file_content_checker(file1, file2);
+            fclose(file1);
+            fclose(file2);
+            if (is_same_content) {
+                printf(_SGR_REDF "%s is already added.\n", file_name);
+                printf(_SGR_RESET);
+                continue;
+            } else {
+                copy_file(file_path, path_maker(find_source(), copied_file_address));
+                printf(_SGR_GREENF "%s successfully added.\n", file_name);
+                printf(_SGR_RESET);
+            }
+        } else {
+            copy_file(file_path, path_maker(find_source(), copied_file_address));
+            FILE *staging_file = fopen(path_maker(find_source(), ".kiwit/staging"), "a");
+            fprintf(staging_file, "%s\n", path_maker(find_source(), copied_file_address));
+            fclose(staging_file);
+            printf(_SGR_GREENF "%s successfully added.\n", file_name);
+            printf(_SGR_RESET);
+        }
+    }
+}
 
-//int run_add_dir(int argc, char *const argv[]) {
-//    char cwd[2000];
-//    if (getcwd(cwd, sizeof(cwd)) == NULL) {
-//        return 1;
-//    }
-//    strcat(cwd, "/");
-//    DIR *dir = opendir(argv[i]);
-//    struct dirent *entry;
-//    char *dir_path = malloc(2000);
-//    dir_path = path_maker(cwd, argv[i]);
-//    char *file_path = malloc(2000);
-//    while ((entry = readdir(dir)) != NULL) {
-//        if (entry->d_type == DT_REG) {
-//            file_path = find_source();
-//            strcat(file_path, argv[i]);
-//            strcat(file_path, "/");
-//            strcat(file_path, entry->d_name);
-//            printf("%s\n", file_path);
-//            printf(_SGR_REDF "This is a directory\n" _SGR_RESET);
-//            if (find_file_in_stage(entry->d_name) == 1) {
-//                FILE *file1 = fopen(file_path, "r");
-//                char *file_path2 = malloc(2000);
-//                file_path2 = find_source();
-//                strcat(file_path2, ".kiwit/staging_files/");
-//                strcat(file_path2, entry->d_name);
-//                printf("%s\n", file_path2);
-//                FILE *file2 = fopen(file_path2, "r");
-//                if (file_content_checker(file1, file2) == 1) {
-//                    fclose(file1);
-//                    fclose(file2);
-//                    continue;
-//                }
-//                fclose(file1);
-//                fclose(file2);
-//                char *staging_files_address = malloc(1000);
-//                strcpy(staging_files_address, path_maker(find_source(), ".kiwit/staging_files/"));
-//                strcat(staging_files_address, entry->d_name);
-//                copy_file(file_path, staging_files_address);
-//                FILE *staging_file = fopen(path_maker(find_source(), ".kiwit/staging"), "a");
-//                fprintf(staging_file, "%s\n", staging_files_address);
-//                fclose(staging_file);
-//                printf(_SGR_GREENF "%s successfully added.\n", entry->d_name);
-//                printf(_SGR_RESET);
-//            }
-//        }
-//    }
-//}
+int run_add_dir(int argc, char *const argv[], char *file_path, int i) {
+    FILE *outputFile = fopen("output.txt", "w");
+    explore_directory(file_path, outputFile);
+    fclose(outputFile);
+    outputFile = fopen("output.txt", "r");
+    run_add_file(outputFile);
+    fclose(outputFile);
+    system("rm output.txt");
+
+}
 
 int run_add(int argc, char *const argv[]) {
     // I have to use + is_f in the argv[num]
@@ -553,6 +625,17 @@ int run_add(int argc, char *const argv[]) {
             return 1;
         }
         is_f = 1;
+    }
+    if (strcmp(argv[2], "-n") == 0 && argc > 3) {
+        if (atoi(argv[3]) == 0) {
+            printf(_SGR_REDF"Please enter a number bigger than 0.\n"_SGR_RESET);
+            return 0;
+        }
+        add_n(find_source(), atoi(argv[3]));
+        return 0;
+    } else if (strcmp(argv[2], "-n") == 0 && argc <= 3) {
+        printf(_SGR_REDF"Please enter the depth.\n"_SGR_RESET);
+        return 0;
     }
     for (int i = 2 + is_f; i < argc; ++i) {
         //printf("%s\n", argv[i]);
@@ -594,9 +677,7 @@ int run_add(int argc, char *const argv[]) {
                 printf(_SGR_RESET);
             }
         } else if (is_dir(file_path) == 1) {
-            printf("%s\n", argv[i]);
-            printf("%s\n", file_path);
-            //run_add_dir(argc, argv);
+            run_add_dir(argc, argv, file_path, i);
         }
     }
 }
