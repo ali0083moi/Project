@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include "ansi_color.h"
+#include "ansi_color.c"
+#include "logo_print.h"
 #include "logo_print.c"
 #include <dirent.h>
 #include <stdbool.h>
@@ -27,6 +29,40 @@ char *root_path = "/Users/ali/Documents/Daaneshgah/Term1/FOP/Project/data/";
 //
 //    return hash;
 //}
+
+// Sarina
+int find_file_in_stage(char file_name[]) {
+    struct dirent *entry;
+    char file_2[200];
+    char cwd[500];
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        return 1;
+    }
+    snprintf(file_2, sizeof(file_2), "%s/%s", cwd, ".kiwit/staging_files");
+    //printf("%s\n", file_2);
+    DIR *dir = opendir(file_2);
+    while ((entry = readdir(dir)) != NULL) {
+        if (entry->d_type == DT_REG) {
+            if (strncmp(entry->d_name, file_name, strlen(file_name)) == 0) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+}
+
+int file_content_checker(FILE *file1, FILE *file2) {
+    char c1 = fgetc(file1);
+    char c2 = fgetc(file2);
+    while (c1 != EOF || c2 != EOF) {
+        if (c1 != c2) {
+            return 0;
+        }
+        c1 = fgetc(file1);
+        c2 = fgetc(file2);
+    }
+    return 1;
+}
 
 char *find_source() {
     char cwd[2024];
@@ -427,6 +463,87 @@ void config_root(int argc, const char *argv[]) {
     }
 }
 
+
+//int run_add_file() {
+//    char copied_file_address[1000];
+//    strcpy(copied_file_address, ".kiwit/staging_files/");
+//    strcat(copied_file_address, argv[i]);
+//    FILE *file1;
+//    FILE *file2;
+//    if (find_file_in_stage(argv[i]) == 1) {
+//        // if: file the same: file_content_checker = 1 // else: file_content_checker = 0
+//        file1 = fopen(path_maker(find_source(), copied_file_address), "r");
+//        file2 = fopen(file_path, "r");
+//        int is_same_content = file_content_checker(file1, file2);
+//        fclose(file1);
+//        fclose(file2);
+//        if (is_same_content) {
+//            printf(_SGR_REDF "%s is already added.\n", argv[i]);
+//            printf(_SGR_RESET);
+//            continue;
+//        } else {
+//            copy_file(file_path, path_maker(find_source(), copied_file_address));
+//            printf(_SGR_GREENF "%s successfully added.\n", argv[i]);
+//            printf(_SGR_RESET);
+//        }
+//    } else {
+//        copy_file(file_path, path_maker(find_source(), copied_file_address));
+//        FILE *staging_file = fopen(path_maker(find_source(), ".kiwit/staging"), "a");
+//        fprintf(staging_file, "%s\n", path_maker(find_source(), copied_file_address));
+//        fclose(staging_file);
+//        printf(_SGR_GREENF "%s successfully added.\n", argv[i]);
+//        printf(_SGR_RESET);
+//    }
+//}
+
+//int run_add_dir(int argc, char *const argv[]) {
+//    char cwd[2000];
+//    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+//        return 1;
+//    }
+//    strcat(cwd, "/");
+//    DIR *dir = opendir(argv[i]);
+//    struct dirent *entry;
+//    char *dir_path = malloc(2000);
+//    dir_path = path_maker(cwd, argv[i]);
+//    char *file_path = malloc(2000);
+//    while ((entry = readdir(dir)) != NULL) {
+//        if (entry->d_type == DT_REG) {
+//            file_path = find_source();
+//            strcat(file_path, argv[i]);
+//            strcat(file_path, "/");
+//            strcat(file_path, entry->d_name);
+//            printf("%s\n", file_path);
+//            printf(_SGR_REDF "This is a directory\n" _SGR_RESET);
+//            if (find_file_in_stage(entry->d_name) == 1) {
+//                FILE *file1 = fopen(file_path, "r");
+//                char *file_path2 = malloc(2000);
+//                file_path2 = find_source();
+//                strcat(file_path2, ".kiwit/staging_files/");
+//                strcat(file_path2, entry->d_name);
+//                printf("%s\n", file_path2);
+//                FILE *file2 = fopen(file_path2, "r");
+//                if (file_content_checker(file1, file2) == 1) {
+//                    fclose(file1);
+//                    fclose(file2);
+//                    continue;
+//                }
+//                fclose(file1);
+//                fclose(file2);
+//                char *staging_files_address = malloc(1000);
+//                strcpy(staging_files_address, path_maker(find_source(), ".kiwit/staging_files/"));
+//                strcat(staging_files_address, entry->d_name);
+//                copy_file(file_path, staging_files_address);
+//                FILE *staging_file = fopen(path_maker(find_source(), ".kiwit/staging"), "a");
+//                fprintf(staging_file, "%s\n", staging_files_address);
+//                fclose(staging_file);
+//                printf(_SGR_GREENF "%s successfully added.\n", entry->d_name);
+//                printf(_SGR_RESET);
+//            }
+//        }
+//    }
+//}
+
 int run_add(int argc, char *const argv[]) {
     // I have to use + is_f in the argv[num]
     int is_f = 0;
@@ -442,64 +559,44 @@ int run_add(int argc, char *const argv[]) {
         char *file_path = find_source();
         strcat(file_path, argv[i]);
         if (is_dir(file_path) == -1) {
-            printf(_SGR_REDF "There is no file or directory with this name!\n" _SGR_RESET);
+            printf(_SGR_REDF "There is no file or directory with this name: " _SGR_RESET);
+            printf(_SGR_REDF "%s\n", argv[i]);
+            printf(_SGR_RESET);
             //return 1;
         } else if (is_dir(file_path) == 0) {
             char copied_file_address[1000];
             strcpy(copied_file_address, ".kiwit/staging_files/");
             strcat(copied_file_address, argv[i]);
-            char *file_data = malloc(1000000);
-            char *file_data_checker = malloc(1000000);
-            //printf("%s\n", path_maker(find_source(), ".kiwit/staging"));
-            FILE *src_file = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
             FILE *file1;
-            FILE *file2 = fopen(file_path, "r");
-            fscanf(file2, "%[^\0]s", file_data);
-            fclose(file2);
-
-            char *line = malloc(2024);
-            //printf("%s\n", copied_src);
-            printf("%s\n", argv[i]);
-//            while (fgets(line, 2024, src_file) != NULL) {
-//                //printf("%s\n", line);
-////                flag3 = 1;
-//                flag2 = 0; // for checking if a file address is already added
-//                flag = 0; //for deleted files
-//                if (line[strlen(line) - 1] == '\n') {
-//                    line[strlen(line) - 1] = '\0';
-//                }
-//                if (strcmp(line, path_maker(find_source(), copied_src)) == 0) {
-//                    flag2 = 1;
-//                }
-//                //printf("%s\n", line);
-//                // for checking if a file deleted
-//                file1 = fopen(line, "r");
-//                if (file1 == NULL) {
-//                    flag = 1;
-//                }
-//                if (flag == 0) {
-//                    fscanf(file1, "%[^\0]s", file_data_checker);
-//                    //printf("%s\n", file_data_checker);
-//                    unsigned long int file_hash = hash(file_data_checker);
-//                    //printf("%lu\n", file_hash);
-//                    if (file_hash == not_added_file_hash) {
-//                        printf(_SGR_REDF "%s is already added\n", argv[i]);
-//                        printf(_SGR_RESET);
-//                        flag2 = 1;
-//                    } else {
-//                        copy_file(file_path, path_maker(find_source(), copied_src));
-//                    }
-//                }
-//            }
-//            fseek(src_file, 0, SEEK_SET);
-//            if (flag2 == 0) {
-//                copy_file(file_path, path_maker(find_source(), copied_src));
-//                FILE *src_file2 = fopen(path_maker(find_source(), ".kiwit/staging"), "a");
-//                fprintf(src_file2, "%s\n", path_maker(find_source(), copied_src));
-//            }
+            FILE *file2;
+            if (find_file_in_stage(argv[i]) == 1) {
+                // if: file the same: file_content_checker = 1 // else: file_content_checker = 0
+                file1 = fopen(path_maker(find_source(), copied_file_address), "r");
+                file2 = fopen(file_path, "r");
+                int is_same_content = file_content_checker(file1, file2);
+                fclose(file1);
+                fclose(file2);
+                if (is_same_content) {
+                    printf(_SGR_REDF "%s is already added.\n", argv[i]);
+                    printf(_SGR_RESET);
+                    continue;
+                } else {
+                    copy_file(file_path, path_maker(find_source(), copied_file_address));
+                    printf(_SGR_GREENF "%s successfully added.\n", argv[i]);
+                    printf(_SGR_RESET);
+                }
+            } else {
+                copy_file(file_path, path_maker(find_source(), copied_file_address));
+                FILE *staging_file = fopen(path_maker(find_source(), ".kiwit/staging"), "a");
+                fprintf(staging_file, "%s\n", path_maker(find_source(), copied_file_address));
+                fclose(staging_file);
+                printf(_SGR_GREENF "%s successfully added.\n", argv[i]);
+                printf(_SGR_RESET);
+            }
         } else if (is_dir(file_path) == 1) {
-            printf(_SGR_REDF "This is a directory\n" _SGR_RESET);
-            //return 1;
+            printf("%s\n", argv[i]);
+            printf("%s\n", file_path);
+            //run_add_dir(argc, argv);
         }
     }
 }
@@ -542,9 +639,9 @@ int main(int argc, const char *argv[]) {
         } else {
             config_root(argc, argv);
         }
-    } else if (strcmp(argv[1], "--start") == 0) {
+    } else if (strcmp(command, "--start") == 0) {
         logo_print();
-    } else if (strcmp(argv[1], "add") == 0) {
+    } else if (strcmp(command, "add") == 0 && argc >= 3) {
         return run_add(argc, argv);
     } else {
         printf(_SGR_REDB "invalid command\n"_SGR_RESET);
