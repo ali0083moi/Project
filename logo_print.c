@@ -21,7 +21,7 @@ void logo_print() {
     // Line 3
     printf(_C_L_PURPLE"###############((((((((((((("  _SGR_RESET);
     printf(_C_L_WHITE"&&&&&&&@"  _SGR_RESET);
-    printf(_C_L_GRAY"*(%%%%%%%%%%%%%%%%%%##"  _SGR_RESET);
+    printf(_C_L_GRAY"%%%%%%%%%%%%%%%%%%%%%%##"  _SGR_RESET);
     printf(_C_D_GRAY"**********"  _SGR_RESET);
     printf(_C_L_WHITE"&&&&&&&"  _SGR_RESET);
     printf(_C_L_PURPLE"(((/(/(/////////////\n"  _SGR_RESET);
