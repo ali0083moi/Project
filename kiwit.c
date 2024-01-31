@@ -1,3 +1,7 @@
+// hints for me:
+// line 0 = username
+// line 1 = email
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -13,20 +17,33 @@ char *root_email;
 char *root_username;
 char *root_path = "/Users/ali/Documents/Daaneshgah/Term1/FOP/Project/data/";
 
-//char *find_source() {
-//    char cwd[2024];
-//    if (getcwd(cwd, sizeof(cwd)) == NULL) return "NULL";
-//    char *ret = (char *) malloc(2024);
-//    strcpy(ret, cwd);
-//    char *p = strstr(ret, ".kiwit");
-//    p[6] = '\0';
-//    return ret;
-//}
-
-//void file_reader(FILE *file, char *str) {
+//unsigned long hash(char *str) {
+//    unsigned long hash = 5381;
+//    int c;
 //
+//    while ((c = *str++)) {
+//        hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+//    }
+//
+//    return hash;
 //}
 
+char *find_source() {
+    char cwd[2024];
+    if (getcwd(cwd, sizeof(cwd)) == NULL) return NULL;
+    char *ret = (char *) malloc(2024);
+    strcpy(ret, cwd);
+    strcat(ret, "/");
+    return ret;
+}
+
+int is_dir(char *path) {
+    struct stat st_buf;
+    int status = stat(path, &st_buf);
+    if (status != 0) return -1;
+    if (S_ISREG(st_buf.st_mode)) return 0;
+    if (S_ISDIR(st_buf.st_mode)) return 1;
+}
 
 void copy_file(char *source, char *destination) {
     FILE *file1 = fopen(source, "r");
@@ -64,13 +81,23 @@ int create_configs(char *username, char *email) {
         return 1;
 
     // create files folder
-    if (mkdir(".kiwit/files", 0755) != 0)
+    if (mkdir(".kiwit/staging_files", 0755) != 0)
         return 1;
 
     file = fopen(".kiwit/staging", "w");
     fclose(file);
 
     file = fopen(".kiwit/tracks", "w");
+    fclose(file);
+
+    file = fopen(".kiwit/staging", "w");
+    fclose(file);
+
+    file = fopen(".kiwit/deleted", "w");
+    fclose(file);
+
+    file = fopen(".kiwit/number", "w");
+    fprintf(file, "0\n");
     fclose(file);
 
     copy_file(path_maker(root_path, "root_alias"), ".kiwit/alias");
@@ -194,14 +221,39 @@ void config_alias(int argc, const char *argv[]) {
         if (argv[4] == NULL || argv[5] == NULL) {
             printf(_SGR_REDF _SGR_BOLD "invalid command\n"_SGR_RESET);
             return;
-        } else {
-            file = fopen(path_maker(root_path, "root_alias"), "r");
-            if (file == NULL) {
-                printf("Error opening file!\n");
-                exit(1);
+        }
+        file = fopen(path_maker(root_path, "root_alias"), "r");
+        if (file == NULL) {
+            printf("Error opening file!\n");
+            exit(1);
+        }
+        file2 = fopen(path_maker(root_path, "root_alias2"), "w");
+        char *line = malloc(1000);
+        while (fgets(line, 1000, file) != NULL) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
             }
-            file2 = fopen(path_maker(root_path, "root_alias2"), "w");
-            char *line = malloc(1000);
+            fprintf(file2, "%s", line);
+            if (strstr(line, argv[5]) != NULL) {
+                fprintf(file2, " %s", argv[4]);
+            }
+            fprintf(file2, "\n");
+        }
+        fclose(file);
+        fclose(file2);
+        remove(path_maker(root_path, "root_alias"));
+        rename(path_maker(root_path, "root_alias2"),
+               path_maker(root_path, "root_alias"));
+        //
+        char *each_ripo = malloc(10000);
+        FILE *ripo_list_file = fopen(path_maker(root_path, "ripo_list"), "r");
+        while (fgets(each_ripo, 10000, ripo_list_file) != NULL) {
+            if (each_ripo[strlen(each_ripo) - 1] == '\n') {
+                each_ripo[strlen(each_ripo) - 1] = '\0';
+            }
+            strcat(each_ripo, "/.kiwit/");
+            file = fopen(path_maker(each_ripo, "alias"), "r");
+            file2 = fopen(path_maker(each_ripo, "alias2"), "w");
             while (fgets(line, 1000, file) != NULL) {
                 if (line[strlen(line) - 1] == '\n') {
                     line[strlen(line) - 1] = '\0';
@@ -212,8 +264,13 @@ void config_alias(int argc, const char *argv[]) {
                 }
                 fprintf(file2, "\n");
             }
-
+            fclose(file);
+            fclose(file2);
+            remove(path_maker(each_ripo, "alias"));
+            rename(path_maker(each_ripo, "alias2"),
+                   path_maker(each_ripo, "alias"));
         }
+        fclose(ripo_list_file);
     } else {
         if (argv[3] == NULL || argv[4] == NULL) {
             printf(_SGR_REDF _SGR_BOLD "invalid command\n"_SGR_RESET);
@@ -237,38 +294,32 @@ void config_alias(int argc, const char *argv[]) {
             }
             fprintf(file2, "\n");
         }
-    }
-    fclose(file);
-    fclose(file2);
-    if (strcmp(argv[2], "-global") == 0) {
-        remove(path_maker(root_path, "root_alias"));
-        rename(path_maker(root_path, "root_alias2"),
-               path_maker(root_path, "root_alias"));
-    } else {
+        fclose(file);
+        fclose(file2);
         remove(".kiwit/alias");
         rename(".kiwit/alias2", ".kiwit/alias");
     }
 }
 
 void config_root(int argc, const char *argv[]) {
-    // line 0 = username
-    // line 1 = email
     int line_number = 0;
     bool is_email = false;
     FILE *file;
     FILE *file2;
-    if (strcmp(argv[2], "-global") == 0 && (strcmp(argv[3], "user.name") == 0 || strcmp(argv[3], "user.email") == 0)) {
+    if (strcmp(argv[2], "-global") == 0 &&
+        (strcmp(argv[3], "user.name") == 0 || strcmp(argv[3], "user.email") == 0)) {
         if (argv[4] == NULL) {
             printf(_SGR_REDF _SGR_BOLD "invalid command\n"_SGR_RESET);
             return;
-        } else {
-            file = fopen(path_maker(root_path, "root_config"), "r");
-            if (file == NULL) {
-                printf("Error opening file!\n");
-                exit(1);
-            }
-            file2 = fopen(path_maker(root_path, "root_config2"), "w");
         }
+        //printf("%s\n", path_maker(root_path, "root_config"));
+        file = fopen(path_maker(root_path, "root_config"), "r");
+        if (file == NULL) {
+            printf("Error opening file!\n");
+            exit(1);
+        }
+        file2 = fopen(path_maker(root_path, "root_config2"), "w");
+
         int flag = 0;
         char *root_config_line = malloc(1000);
         if (strcmp(argv[3], "user.email") == 0) {
@@ -294,6 +345,49 @@ void config_root(int argc, const char *argv[]) {
         remove(path_maker(root_path, "root_config"));
         rename(path_maker(root_path, "root_config2"),
                path_maker(root_path, "root_config"));
+        char *each_ripo = malloc(10000);
+        FILE *ripo_list_file = fopen(path_maker(root_path, "ripo_list"), "r");
+        while (fgets(each_ripo, 10000, ripo_list_file) != NULL) {
+            if (each_ripo[strlen(each_ripo) - 1] == '\n') {
+                each_ripo[strlen(each_ripo) - 1] = '\0';
+            }
+            line_number = 0;
+            is_email = false;
+            strcat(each_ripo, "/.kiwit/");
+            file = fopen(path_maker(each_ripo, "config"), "r");
+            if (file == NULL) {
+                //printf("Error opening file!\n");
+                exit(1);
+            }
+            file2 = fopen(path_maker(each_ripo, "config2"), "w");
+
+            flag = 0;
+            char *config_line = malloc(1000);
+            if (strcmp(argv[3], "user.email") == 0) {
+                is_email = 1;
+            }
+            while (fgets(config_line, 1000, file) != NULL) {
+                if (config_line[strlen(config_line) - 1] == '\n') {
+                    config_line[strlen(config_line) - 1] = '\0';
+                }
+                if (line_number == is_email) {
+                    fprintf(file2, "%s\n", argv[4]);
+                    flag = 1;
+                } else {
+                    fprintf(file2, "%s\n", config_line);
+                }
+                line_number++;
+            }
+            if (flag == 0) {
+                fprintf(file2, "%s\n", argv[4]);
+            }
+            fclose(file);
+            fclose(file2);
+            remove(path_maker(each_ripo, "config"));
+            rename(path_maker(each_ripo, "config2"),
+                   path_maker(each_ripo, "config"));
+        }
+        fclose(ripo_list_file);
     } else {
         if (argv[3] == NULL) {
             printf(_SGR_REDF _SGR_BOLD "invalid command\n"_SGR_RESET);
@@ -333,11 +427,91 @@ void config_root(int argc, const char *argv[]) {
     }
 }
 
+int run_add(int argc, char *const argv[]) {
+    // I have to use + is_f in the argv[num]
+    int is_f = 0;
+    if ((strcmp(argv[2], "-f") == 0)) {
+        if (argc < 4) {
+            printf(_SGR_REDF "Please write your file name\n" _SGR_RESET);
+            return 1;
+        }
+        is_f = 1;
+    }
+    for (int i = 2 + is_f; i < argc; ++i) {
+        //printf("%s\n", argv[i]);
+        char *file_path = find_source();
+        strcat(file_path, argv[i]);
+        if (is_dir(file_path) == -1) {
+            printf(_SGR_REDF "There is no file or directory with this name!\n" _SGR_RESET);
+            //return 1;
+        } else if (is_dir(file_path) == 0) {
+            char copied_file_address[1000];
+            strcpy(copied_file_address, ".kiwit/staging_files/");
+            strcat(copied_file_address, argv[i]);
+            char *file_data = malloc(1000000);
+            char *file_data_checker = malloc(1000000);
+            //printf("%s\n", path_maker(find_source(), ".kiwit/staging"));
+            FILE *src_file = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
+            FILE *file1;
+            FILE *file2 = fopen(file_path, "r");
+            fscanf(file2, "%[^\0]s", file_data);
+            fclose(file2);
+
+            char *line = malloc(2024);
+            //printf("%s\n", copied_src);
+            printf("%s\n", argv[i]);
+//            while (fgets(line, 2024, src_file) != NULL) {
+//                //printf("%s\n", line);
+////                flag3 = 1;
+//                flag2 = 0; // for checking if a file address is already added
+//                flag = 0; //for deleted files
+//                if (line[strlen(line) - 1] == '\n') {
+//                    line[strlen(line) - 1] = '\0';
+//                }
+//                if (strcmp(line, path_maker(find_source(), copied_src)) == 0) {
+//                    flag2 = 1;
+//                }
+//                //printf("%s\n", line);
+//                // for checking if a file deleted
+//                file1 = fopen(line, "r");
+//                if (file1 == NULL) {
+//                    flag = 1;
+//                }
+//                if (flag == 0) {
+//                    fscanf(file1, "%[^\0]s", file_data_checker);
+//                    //printf("%s\n", file_data_checker);
+//                    unsigned long int file_hash = hash(file_data_checker);
+//                    //printf("%lu\n", file_hash);
+//                    if (file_hash == not_added_file_hash) {
+//                        printf(_SGR_REDF "%s is already added\n", argv[i]);
+//                        printf(_SGR_RESET);
+//                        flag2 = 1;
+//                    } else {
+//                        copy_file(file_path, path_maker(find_source(), copied_src));
+//                    }
+//                }
+//            }
+//            fseek(src_file, 0, SEEK_SET);
+//            if (flag2 == 0) {
+//                copy_file(file_path, path_maker(find_source(), copied_src));
+//                FILE *src_file2 = fopen(path_maker(find_source(), ".kiwit/staging"), "a");
+//                fprintf(src_file2, "%s\n", path_maker(find_source(), copied_src));
+//            }
+        } else if (is_dir(file_path) == 1) {
+            printf(_SGR_REDF "This is a directory\n" _SGR_RESET);
+            //return 1;
+        }
+    }
+}
+
 int main(int argc, const char *argv[]) {
     if (argc < 2) {
         printf("Usage : %s command\n", argv[0]);
         return 1;
     }
+    char *cwd = malloc(2024);
+    getcwd(cwd, sizeof(cwd));
+    strcat(cwd, "/.kiwit/alias");
     char line[1000];
     char *command = calloc(20, sizeof(char));
     FILE *file = fopen(path_maker(root_path, "root_alias"), "r");
@@ -348,6 +522,18 @@ int main(int argc, const char *argv[]) {
         }
     }
     fclose(file);
+    if (command[0] == '\0') {
+        char *dir = find_source();
+        strcat(dir, ".kiwit/alias");
+        file = fopen(dir, "r");
+        while (fgets(line, 1000, file) != NULL) {
+            if (strstr(line, argv[1]) != NULL) {
+                sscanf(line, "%s", command);
+                break;
+            }
+        }
+        fclose(file);
+    }
     if (strcmp(command, "init") == 0) {
         return run_init(argc, argv);
     } else if (strcmp(command, "config") == 0 && argc >= 3) {
@@ -358,8 +544,8 @@ int main(int argc, const char *argv[]) {
         }
     } else if (strcmp(argv[1], "--start") == 0) {
         logo_print();
-    } else if (strcmp(argv[1], "p") == 0) {
-        printf("%s\n", path_maker(root_path, "root_config"));
+    } else if (strcmp(argv[1], "add") == 0) {
+        return run_add(argc, argv);
     } else {
         printf(_SGR_REDB "invalid command\n"_SGR_RESET);
     }
