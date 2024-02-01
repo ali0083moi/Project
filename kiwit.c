@@ -719,7 +719,7 @@ int run_add_redo(int argc, char *const argv[]) {
                 j++;
                 i--;
             }
-            memmove(file_name, file1 + i + 1, j * sizeof(char));
+            memmove(file_name, line1 + i + 1, j * sizeof(char));
             printf(_SGR_GREENF "%s is successfully added.\n", file_name);
             printf(_SGR_RESET);
             flag = 1;
@@ -731,7 +731,11 @@ int run_add_redo(int argc, char *const argv[]) {
 }
 
 int run_reset(int argc, char *const argv[]) {
+    printf("salam");
+}
 
+int run_reset_undo(int argc, char *const argv[]) {
+    printf("salam");
 }
 
 int main(int argc, const char *argv[]) {
