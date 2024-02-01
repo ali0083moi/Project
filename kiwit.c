@@ -96,7 +96,7 @@ void add_n_recursive(char *dir_path, int depth, int max_depth) {
                 for (int i = 0; i < depth; ++i) {
                     strcat(out, "\t");
                 }
-                strcat(out, "├── ");
+                strcat(out, "└─── ");
                 strcpy(entry_path, dir_path);
                 strcat(entry_path, "/");
                 strcat(entry_path, entry->d_name);
@@ -115,7 +115,7 @@ void add_n_recursive(char *dir_path, int depth, int max_depth) {
                 for (int i = 0; i < depth; ++i) {
                     strcat(out, "\t");
                 }
-                strcat(out, "├── ");
+                strcat(out, "└─── ");
                 strcat(out, entry->d_name);
                 if (find_file_in_stage(entry->d_name)) {
                     printf(_SGR_GREENF"%s\n", out);
@@ -601,8 +601,11 @@ int run_add_file(FILE *output_file) {
         } else {
             copy_file(file_path, path_maker(find_source(), copied_file_address));
             FILE *staging_file = fopen(path_maker(find_source(), ".kiwit/staging"), "a");
+            FILE *staging_file_2 = fopen(path_maker(find_source(), ".kiwit/staging_2"), "a");
+            fprintf(staging_file_2, "%s\n", file_path);
             fprintf(staging_file, "%s\n", path_maker(find_source(), copied_file_address));
             fclose(staging_file);
+            fclose(staging_file_2);
             printf(_SGR_GREENF "%s successfully added.\n", file_name);
             printf(_SGR_RESET);
         }
@@ -674,8 +677,11 @@ int run_add(int argc, char *const argv[]) {
             } else {
                 copy_file(file_path, path_maker(find_source(), copied_file_address));
                 FILE *staging_file = fopen(path_maker(find_source(), ".kiwit/staging"), "a");
+                FILE *staging_file_2 = fopen(path_maker(find_source(), ".kiwit/staging_2"), "a");
+                fprintf(staging_file_2, "%s\n", file_path);
                 fprintf(staging_file, "%s\n", path_maker(find_source(), copied_file_address));
                 fclose(staging_file);
+                fclose(staging_file_2);
                 printf(_SGR_GREENF "%s successfully added.\n", argv[i]);
                 printf(_SGR_RESET);
             }
@@ -683,6 +689,49 @@ int run_add(int argc, char *const argv[]) {
             run_add_dir(argc, argv, file_path, i);
         }
     }
+}
+
+int run_add_redo(int argc, char *const argv[]) {
+    FILE *staging_address1 = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
+    FILE *staging_address2 = fopen(path_maker(find_source(), ".kiwit/staging_2"), "r");
+    char *line1 = malloc(1000);
+    char *line2 = malloc(1000);
+    int flag = 0;
+    while (fgets(line1, 1000, staging_address1) != NULL) {
+        if (line1[strlen(line1) - 1] == '\n') {
+            line1[strlen(line1) - 1] = '\0';
+        }
+        fgets(line2, 1000, staging_address2);
+        if (line2[strlen(line2) - 1] == '\n') {
+            line2[strlen(line2) - 1] = '\0';
+        }
+        FILE *file1 = fopen(line1, "r");
+        FILE *file2 = fopen(line2, "r");
+        int is_same_content = file_content_checker(file1, file2);
+        fclose(file1);
+        fclose(file2);
+        if (!is_same_content) {
+            copy_file(line2, line1);
+            char *file_name = malloc(2000);
+            strcpy(file_name, line1);
+            int i = strlen(file_name), j = 0;
+            while (file_name[i] != '/') {
+                j++;
+                i--;
+            }
+            memmove(file_name, file1 + i + 1, j * sizeof(char));
+            printf(_SGR_GREENF "%s is successfully added.\n", file_name);
+            printf(_SGR_RESET);
+            flag = 1;
+        }
+    }
+    if (flag == 0) {
+        printf(_SGR_GREENF "Everything is already added.\n"_SGR_RESET);
+    }
+}
+
+int run_reset(int argc, char *const argv[]) {
+
 }
 
 int main(int argc, const char *argv[]) {
@@ -726,7 +775,17 @@ int main(int argc, const char *argv[]) {
     } else if (strcmp(command, "--start") == 0 && argc == 2) {
         logo_print();
     } else if (strcmp(command, "add") == 0 && argc >= 3) {
-        return run_add(argc, argv);
+        if (strcmp(argv[2], "-redo") == 0) {
+            return run_add_redo(argc, argv);
+        } else {
+            return run_add(argc, argv);
+        }
+    } else if (strcmp(command, "reset") == 0 && argc >= 3) {
+        if (strcmp(argv[2], "-undo") == 0) {
+            return run_reset_undo(argc, argv);
+        } else {
+            return run_reset(argc, argv);
+        }
     } else {
         printf(_SGR_REDB "invalid command\n"_SGR_RESET);
     }
