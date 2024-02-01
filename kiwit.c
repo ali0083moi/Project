@@ -87,6 +87,7 @@ void add_n_recursive(char *dir_path, int depth, int max_depth) {
     if (depth == max_depth) {
         return;
     }
+    //int flag = 0;
     while ((entry = readdir(dir)) != NULL) {
 
         if (entry->d_type == DT_DIR) {
@@ -210,13 +211,22 @@ int create_configs(char *username, char *email) {
     if (mkdir(".kiwit/staging_files", 0755) != 0)
         return 1;
 
+    if (mkdir(".kiwit/unstaging_files", 0755) != 0)
+        return 1;
+
     file = fopen(".kiwit/staging", "w");
+    fclose(file);
+
+    file = fopen(".kiwit/staging_2", "w");
     fclose(file);
 
     file = fopen(".kiwit/tracks", "w");
     fclose(file);
 
-    file = fopen(".kiwit/staging_2", "w");
+    file = fopen(".kiwit/unstaging", "w");
+    fclose(file);
+
+    file = fopen(".kiwit/unstaging_2", "w");
     fclose(file);
 
     file = fopen(".kiwit/deleted", "w");
@@ -227,7 +237,7 @@ int create_configs(char *username, char *email) {
     fclose(file);
 
     copy_file(path_maker(root_path, "root_alias"), ".kiwit/alias");
-
+    logo_print();
     return 0;
 }
 
@@ -322,17 +332,17 @@ int run_init(int argc, char *const argv[]) {
         printf(_SGR_REDF _SGR_BOLD "You did not set user.name\n"_SGR_RESET);
         printf(_SGR_GREENF "use kiwit config -global user.name <username>\n"_SGR_RESET);
         printf(_SGR_YELLOWF "then you can use kiwit init\n"_SGR_RESET);
-        return 1;
+        return 0;
     } else if (root_email == NULL || (int) root_email[0] == 0) {
         printf(_SGR_REDF _SGR_BOLD "You did not set user.email\n"_SGR_RESET);
         printf(_SGR_GREENF "use kiwit config -global user.email <email>\n"_SGR_RESET);
         printf(_SGR_YELLOWF "then you can use kiwit init\n"_SGR_RESET);
-        return 1;
+        return 0;
     } else {
         printf(_SGR_REDF _SGR_BOLD "You did not set user.name and user.email\n"_SGR_RESET);
         printf(_SGR_GREENF "use kiwit config -global user.name <username>\nuse kiwit config -global user.email <email>\n"_SGR_RESET);
         printf(_SGR_YELLOWF "then you can use kiwit init\n"_SGR_RESET);
-        return 1;
+        return 0;
     }
 }
 
@@ -726,12 +736,119 @@ int run_add_redo(int argc, char *const argv[]) {
         }
     }
     if (flag == 0) {
-        printf(_SGR_GREENF "Everything is already added.\n"_SGR_RESET);
+        printf(_C_L_PURPLE "Everything is already added.\n"_SGR_RESET);
     }
 }
 
+int run_reset_dir(int argc, char *const argv[], char *file_path, int i) {
+    FILE *outputFile = fopen("output.txt", "w");
+    explore_directory(file_path, outputFile);
+    fclose(outputFile);
+    outputFile = fopen("output.txt", "r");
+    run_add_file(outputFile);
+    fclose(outputFile);
+    system("rm output.txt");
+}
+
 int run_reset(int argc, char *const argv[]) {
-    printf("salam");
+    int is_f = 0;
+    if ((strcmp(argv[2], "-f") == 0)) {
+        if (argc < 4) {
+            printf(_SGR_REDF "Please write your file name\n" _SGR_RESET);
+            return 1;
+        }
+        is_f = 1;
+    }
+    for (int i = 2 + is_f; i < argc; ++i) {
+        //printf("%s\n", argv[i]);
+        int line_counter = 0;
+        char *file_path = find_source();
+        strcat(file_path, argv[i]);
+        if (is_dir(file_path) == -1) {
+            printf(_SGR_REDF "There is no file or directory with this name: " _SGR_RESET);
+            printf(_SGR_REDF "%s\n", argv[i]);
+            printf(_SGR_RESET);
+            //return 1;
+        } else if (is_dir(file_path) == 0) {
+            FILE *staged_files_address2 = fopen(path_maker(find_source(), ".kiwit/staging_2"), "r");
+            char *line = malloc(1025);
+            int flag = 0;
+            while (fgets(line, 1000, staged_files_address2) != NULL) {
+                if (line[strlen(line) - 1] == '\n') {
+                    line[strlen(line) - 1] = '\0';
+                }
+                if (strcmp(line, file_path) == 0) {
+                    flag = 1;
+                    line_counter++;
+                    break;
+                }
+                line_counter++;
+            }
+            if (flag == 0) {
+                printf(_SGR_REDF "%s is not staged before.\n", argv[i]);
+                continue;
+            }
+            fclose(staged_files_address2);
+            FILE *staged_files_address1 = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
+            staged_files_address2 = fopen(path_maker(find_source(), ".kiwit/staging_2"), "r");
+            //printf("%s\n", line);
+            char copied_file_address[2000];
+            strcpy(copied_file_address, ".kiwit/staging_files/");
+            strcat(copied_file_address, argv[i]);
+            strcpy(copied_file_address, path_maker(find_source(), copied_file_address));
+            //printf("%s\n", copied_file_address);
+            char move_file_address[2000];
+            strcpy(move_file_address, ".kiwit/unstaging_files/");
+            strcpy(move_file_address, path_maker(find_source(), move_file_address));
+            char *move_command = malloc(4000);
+            strcpy(move_command, "mv ");
+            strcat(move_command, copied_file_address);
+            strcat(move_command, " ");
+            strcat(move_command, move_file_address);
+            system(move_command);
+
+            FILE *unstaging_file = fopen(path_maker(find_source(), ".kiwit/unstaging"), "a");
+            strcat(move_file_address, argv[i]);
+            fprintf(unstaging_file, "%s\n", move_file_address);
+            fclose(unstaging_file);
+
+            FILE *unstaging_file_2 = fopen(path_maker(find_source(), ".kiwit/unstaging_2"), "a");
+            fprintf(unstaging_file_2, "%s\n", line);
+            fclose(unstaging_file_2);
+            char *file_address_tmp = malloc(2000);
+            strcpy(file_address_tmp, line);
+            FILE *tmp_output = fopen(path_maker(find_source(), ".kiwit/tmp_output"), "w");
+            while (fgets(line, 1024, staged_files_address2) != NULL) {
+                if (line[strlen(line) - 1] == '\n') {
+                    line[strlen(line) - 1] = '\0';
+                }
+                if (strcmp(line, file_address_tmp) != 0) {
+                    fprintf(tmp_output, "%s\n", line);
+                }
+            }
+            fclose(tmp_output);
+            fclose(staged_files_address2);
+            remove(path_maker(find_source(), ".kiwit/staging_2"));
+            rename(path_maker(find_source(), ".kiwit/tmp_output"), path_maker(find_source(), ".kiwit/staging_2"));
+            tmp_output = fopen(path_maker(find_source(), ".kiwit/tmp_output"), "w");
+            while (fgets(line, 1024, staged_files_address1) != NULL) {
+                if (line[strlen(line) - 1] == '\n') {
+                    line[strlen(line) - 1] = '\0';
+                }
+                if (strcmp(line, copied_file_address) != 0) {
+                    fprintf(tmp_output, "%s\n", line);
+                }
+            }
+            fclose(tmp_output);
+            fclose(staged_files_address1);
+            remove(path_maker(find_source(), ".kiwit/staging"));
+            rename(path_maker(find_source(), ".kiwit/tmp_output"), path_maker(find_source(), ".kiwit/staging"));
+            printf(_SGR_GREENF "%s successfully unstaged.\n", argv[i]);
+            printf(_SGR_RESET);
+        } else if (is_dir(file_path) == 1) {
+            run_reset_dir(argc, argv, file_path, i);
+        }
+    }
 }
 
 int run_reset_undo(int argc, char *const argv[]) {
@@ -795,4 +912,5 @@ int main(int argc, const char *argv[]) {
     }
     return 0;
 }
+
 
