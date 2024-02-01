@@ -19,6 +19,19 @@ char *root_email;
 char *root_username;
 char *root_path = "/Users/ali/Documents/Daaneshgah/Term1/FOP/Project/data/";
 
+// file name maker
+/*
+        char *file_name = malloc(2000);
+        strcpy(file_name, line);
+        int i = strlen(file_name), j = 0;
+        while (file_name[i] != '/') {
+            j++;
+            i--;
+        }
+        memmove(file_name, file_path + i + 1, j * sizeof(char));
+ */
+
+
 //unsigned long hash(char *str) {
 //    unsigned long hash = 5381;
 //    int c;
@@ -794,7 +807,7 @@ int run_reset_file() {
     FILE *staged_files_address1 = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
     staged_files_address2 = fopen(path_maker(find_source(), ".kiwit/staging_2"), "r");
     final_output = fopen("output2.txt", "r");
-    char*main_line = malloc(1025);
+    char *main_line = malloc(1025);
     while (fgets(main_line, 1024, final_output) != NULL) {
         if (main_line[strlen(main_line) - 1] == '\n') {
             main_line[strlen(main_line) - 1] = '\0';
@@ -987,7 +1000,49 @@ int run_reset(int argc, char *const argv[]) {
 }
 
 int run_reset_undo(int argc, char *const argv[]) {
-    printf("salam");
+    FILE *unstaged = fopen(path_maker(find_source(), ".kiwit/unstaging"), "r");
+    FILE *unstaged_2 = fopen(path_maker(find_source(), ".kiwit/unstaging_2"), "r");
+    FILE *staged = fopen(path_maker(find_source(), ".kiwit/staging"), "a");
+    FILE *staged_2 = fopen(path_maker(find_source(), ".kiwit/staging_2"), "a");
+    char line[1025];
+    while (fgets(line, 1024, unstaged) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        char *file_name = malloc(2000);
+        strcpy(file_name, line);
+        int i = strlen(file_name), j = 0;
+        while (file_name[i] != '/') {
+            j++;
+            i--;
+        }
+        memmove(file_name, line + i + 1, j * sizeof(char));
+        char copied_file_address[2000];
+        strcpy(copied_file_address, ".kiwit/staging_files/");
+        strcat(copied_file_address, file_name);
+        strcpy(copied_file_address, path_maker(find_source(), copied_file_address));
+        fprintf(staged, "%s\n", copied_file_address);
+        char *move_command = malloc(4000);
+        strcpy(move_command, "mv ");
+        strcat(move_command, line);
+        strcat(move_command, " ");
+        strcat(move_command, copied_file_address);
+        system(move_command);
+        fgets(line, 1024, unstaged_2);
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        fprintf(staged_2, "%s\n", line);
+    }
+    fclose(unstaged);
+    fclose(unstaged_2);
+    fclose(staged);
+    fclose(staged_2);
+    unstaged = fopen(path_maker(find_source(), ".kiwit/unstaging"), "w");
+    unstaged_2 = fopen(path_maker(find_source(), ".kiwit/unstaging_2"), "w");
+    fclose(unstaged);
+    fclose(unstaged_2);
+    printf(_SGR_GREENF "Undo is successfully done.\n"_SGR_RESET);
 }
 
 int main(int argc, const char *argv[]) {
