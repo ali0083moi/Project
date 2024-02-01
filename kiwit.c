@@ -14,6 +14,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <time.h>
+#include <sys/time.h>
 
 char *root_email;
 char *root_username;
@@ -31,7 +33,7 @@ char *root_path = "/Users/ali/Documents/Daaneshgah/Term1/FOP/Project/data/";
         memmove(file_name, file_path + i + 1, j * sizeof(char));
  */
 
-
+// hash code maker
 //unsigned long hash(char *str) {
 //    unsigned long hash = 5381;
 //    int c;
@@ -227,6 +229,9 @@ int create_configs(char *username, char *email) {
     if (mkdir(".kiwit/unstaging_files", 0755) != 0)
         return 1;
 
+    if (mkdir(".kiwit/commits/master", 0755) != 0)
+        return 1;
+
     file = fopen(".kiwit/staging", "w");
     fclose(file);
 
@@ -240,6 +245,14 @@ int create_configs(char *username, char *email) {
     fclose(file);
 
     file = fopen(".kiwit/unstaging_2", "w");
+    fclose(file);
+
+    file = fopen(".kiwit/commit_ID", "w");
+    fprintf(file, "0\n");
+    fclose(file);
+
+    file = fopen(".kiwit/current_branch", "w");
+    fprintf(file, path_maker(find_source(), ".kiwit/commits/master"));
     fclose(file);
 
     file = fopen(".kiwit/deleted", "w");
@@ -1045,6 +1058,155 @@ int run_reset_undo(int argc, char *const argv[]) {
     printf(_SGR_GREENF "Undo is successfully done.\n"_SGR_RESET);
 }
 
+int run_commit(int argc, char *const argv[]) {
+    if (strcmp(argv[2], "-m") != 0) {
+        printf(_SGR_REDF "invalid command\n"_SGR_RESET);
+        return 1;
+    }
+    if (argc < 4) {
+        printf(_SGR_REDF "Please write your commit message\n"_SGR_RESET);
+        return 1;
+    }
+    if (strlen(argv[3]) > 72) {
+        printf(_SGR_REDF "The commit message should have at most 72 characters\n"_SGR_RESET);
+        return 1;
+    }
+    FILE *staged_files_address = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
+    char *line = malloc(1025);
+    int flag = 0;
+    int file_counter = 0;
+    while (fgets(line, 1024, staged_files_address) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        flag = 1;
+        file_counter++;
+        break;
+    }
+    if (flag == 0) {
+        printf(_SGR_REDF "There is no file to commit\n"_SGR_RESET);
+        return 1;
+    }
+    fclose(staged_files_address);
+    FILE *current_branch = fopen(path_maker(find_source(), ".kiwit/current_branch"), "r");
+    char *branch_address = malloc(1025);
+    char *branch_name = malloc(1025);
+    fgets(branch_address, 1024, current_branch);
+    if (branch_address[strlen(branch_address) - 1] == '\n') {
+        branch_address[strlen(branch_address) - 1] = '\0';
+    }
+    fclose(current_branch);
+    int i = strlen(branch_address), j = 0;
+    while (branch_address[i] != '/') {
+        j++;
+        i--;
+    }
+    memmove(branch_name, branch_address + i + 1, j * sizeof(char));
+    FILE *commit_ID_file = fopen(path_maker(find_source(), ".kiwit/commit_ID"), "r");
+    char *commit_ID = malloc(1025);
+    fgets(commit_ID, 1024, commit_ID_file);
+    if (commit_ID[strlen(commit_ID) - 1] == '\n') {
+        commit_ID[strlen(commit_ID) - 1] = '\0';
+    }
+    fclose(commit_ID_file);
+    int commit_ID_int = atoi(commit_ID);
+    commit_ID_int++;
+    fopen(path_maker(find_source(), ".kiwit/commit_ID"), "w");
+    fprintf(commit_ID_file, "%d\n", commit_ID_int);
+    fclose(commit_ID_file);
+    char *commit_address = malloc(1025);
+    strcpy(commit_address, branch_address);
+    strcat(commit_address, "/");
+    strcat(commit_address, commit_ID);
+    if (mkdir(commit_address, 0755) != 0)
+        return 1;
+    char *commit_address_slash = malloc(1025);
+    strcpy(commit_address_slash, commit_address);
+    strcat(commit_address_slash, "/");
+    FILE *stage_file = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
+    while (fgets(line, 1024, stage_file)) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        char *file_name = malloc(2000);
+        strcpy(file_name, line);
+        int i = strlen(file_name), j = 0;
+        while (file_name[i] != '/') {
+            j++;
+            i--;
+        }
+        memmove(file_name, line + i + 1, j * sizeof(char));
+        copy_file(line, path_maker(commit_address_slash, file_name));
+        remove(line);
+    }
+    fclose(stage_file);
+    stage_file = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
+    FILE *commit_file = fopen(path_maker(commit_address_slash, "staging"), "w");
+    while (fgets(line, 1024, stage_file)) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        char *file_name = malloc(2000);
+        strcpy(file_name, line);
+        int i = strlen(file_name), j = 0;
+        while (file_name[i] != '/') {
+            j++;
+            i--;
+        }
+        memmove(file_name, line + i + 1, j * sizeof(char));
+        fprintf(commit_file, "%s\n",path_maker(commit_address_slash, file_name));
+    }
+    fclose(stage_file);
+    fclose(commit_file);
+    char *staging_2_address = malloc(1025);
+    strcpy(staging_2_address, find_source());
+    strcat(staging_2_address, ".kiwit/staging_2");
+    char *command = malloc(4000);
+    strcpy(command, "cp ");
+    strcat(command, staging_2_address);
+    strcat(command, " ");
+    strcat(command, commit_address_slash);
+    system(command);
+    stage_file = fopen(path_maker(find_source(), ".kiwit/staging"), "w");
+    fclose(stage_file);
+    stage_file = fopen(path_maker(find_source(), ".kiwit/staging_2"), "w");
+    fclose(stage_file);
+
+    // commit log
+    // first line : the date of the commit in this format: "YYYY-MM-DD HH:MM:SS"
+    // second line : the commit message
+    // third line : the username of the committer
+    // fourth line : the commit ID
+    // fifth line : the branch name
+    // sixth line : count of the files in the commit
+    FILE *commit_log = fopen(path_maker(commit_address_slash, "commit_log"), "w");
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    fprintf(commit_log, "%d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
+            tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    fprintf(commit_log, "%s\n", argv[3]);
+    FILE *config_file = fopen(path_maker(find_source(), ".kiwit/config"), "r");
+    char *committer_username = malloc(1025);
+    fgets(committer_username, 1024, config_file);
+    if (committer_username[strlen(committer_username) - 1] == '\n') {
+        committer_username[strlen(committer_username) - 1] = '\0';
+    }
+    fclose(config_file);
+    fprintf(commit_log, "%s\n", committer_username);
+    fprintf(commit_log, "%s\n", commit_ID);
+    fprintf(commit_log, "%s\n", branch_name);
+    fprintf(commit_log, "%d\n", file_counter);
+    fclose(commit_log);
+    //
+
+    // commit printng
+    printf(_SGR_GREENF "The commit has been done successfully.\n"_SGR_RESET);
+    printf("The commit ID is: %s\n", commit_ID);
+    printf("%d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
+           tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    printf("The commit message is: %s\n", argv[3]);
+}
+
 int main(int argc, const char *argv[]) {
     if (argc < 2) {
         printf("Usage : %s command\n", argv[0]);
@@ -1097,6 +1259,8 @@ int main(int argc, const char *argv[]) {
         } else {
             return run_reset(argc, argv);
         }
+    } else if (strcmp(command, "commit") == 0 && argc >= 4 && strcmp(argv[2], "-m") == 0) {
+        return run_commit(argc, argv);
     } else {
         printf(_SGR_REDB "invalid command\n"_SGR_RESET);
     }
