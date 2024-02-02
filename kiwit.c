@@ -1312,7 +1312,7 @@ int run_set(int argc, char *const argv[]) {
     printf(_SGR_GREENF"The shortcut message has been added successfully in this project.\n"_SGR_RESET);
 }
 
-int run_replace (int argc, char *const argv[]) {
+int run_replace(int argc, char *const argv[]) {
     if (strcmp(argv[2], "-m") != 0 || strcmp(argv[4], "-s") != 0) {
         printf(_SGR_REDF "invalid command\n"_SGR_RESET);
         return 1;
@@ -1344,7 +1344,8 @@ int run_replace (int argc, char *const argv[]) {
         return 1;
     }
     remove(path_maker(find_source(), ".kiwit/commit_message_shortcuts"));
-    rename(path_maker(find_source(), ".kiwit/commit_message_shortcuts_2"), path_maker(find_source(), ".kiwit/commit_message_shortcuts"));
+    rename(path_maker(find_source(), ".kiwit/commit_message_shortcuts_2"),
+           path_maker(find_source(), ".kiwit/commit_message_shortcuts"));
     printf(_SGR_GREENF"The shortcut message has been replaced successfully in this project.\n"_SGR_RESET);
 }
 
@@ -1371,8 +1372,186 @@ int run_remove(int argc, char *const argv[]) {
         return 1;
     }
     remove(path_maker(find_source(), ".kiwit/commit_message_shortcuts"));
-    rename(path_maker(find_source(), ".kiwit/commit_message_shortcuts_2"), path_maker(find_source(), ".kiwit/commit_message_shortcuts"));
+    rename(path_maker(find_source(), ".kiwit/commit_message_shortcuts_2"),
+           path_maker(find_source(), ".kiwit/commit_message_shortcuts"));
     printf(_SGR_GREENF"The shortcut message has been removed successfully in this project.\n"_SGR_RESET);
+}
+
+int run_log(int argc, char *const argv[]) {
+    FILE *all_logs = fopen(path_maker(find_source(), ".kiwit/commits/all_logs"), "r");
+    int counter = 0;
+    char *line = malloc(1000);
+    while (fgets(line, 1000, all_logs) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        switch (counter % 7) {
+            case 0:
+                printf(_SGR_YELLOWF "%s\n"_SGR_RESET, line);
+                break;
+            case 1:
+                printf(_C_L_ORANGE "%s\n"_SGR_RESET, line);
+                break;
+            case 2:
+                printf(_C_L_PURPLE "%s\n"_SGR_RESET, line);
+                break;
+            case 3:
+                printf(_C_L_GRAY "%s\n"_SGR_RESET, line);
+                break;
+            case 4:
+                printf(_C_L_GREEN"%s\n"_SGR_RESET, line);
+                break;
+            case 5:
+                printf(_C_D_GREEN "%s\n"_SGR_RESET, line);
+                break;
+            case 6:
+                printf(_SGR_RESET"%s\n"_SGR_RESET, line);
+                break;
+        }
+        counter++;
+    }
+    fclose(all_logs);
+}
+
+int run_log_n(int argc, char *const argv[]) {
+    if (strcmp(argv[2], "-n") != 0) {
+        printf(_SGR_REDF "invalid command\n"_SGR_RESET);
+        return 1;
+    }
+    FILE *all_logs = fopen(path_maker(find_source(), ".kiwit/commits/all_logs"), "r");
+    int counter = 0;
+    char *line = malloc(1000);
+    int n = atoi(argv[3]);
+    while (fgets(line, 1000, all_logs) != NULL && counter < n * 7) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        printf("%s\n", line);
+        counter++;
+    }
+    fclose(all_logs);
+}
+
+int run_log_branch(int argc, char *const argv[]) {
+    if (strcmp(argv[2], "-branch") != 0) {
+        printf(_SGR_REDF "invalid command\n"_SGR_RESET);
+        return 1;
+    }
+    // this function should only print the logs that have the same branch name with argv[3]
+    // the branch name is written in the line 5 of each commit log in the all_logs file
+    // the printing don't need to be colorized
+    FILE *all_logs = fopen(path_maker(find_source(), ".kiwit/commits/all_logs"), "r");
+    int counter = 0;
+    char *line = malloc(1000);
+    char **logs = malloc(8 * sizeof(char *));
+    for (int i = 0; i < 8; ++i) {
+        logs[i] = malloc(1000);
+    }
+    while (fgets(line, 1000, all_logs) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        strcpy(logs[counter % 7], line);
+        if (counter % 7 == 6) {
+            if (strstr(logs[4], argv[3]) != NULL) {
+                for (int i = 0; i < 7; ++i) {
+                    printf("%s\n", logs[i]);
+                }
+            }
+        }
+        counter++;
+    }
+    fclose(all_logs);
+}
+
+int run_log_author(int argc, char *const argv[]) {
+    if (strcmp(argv[2], "-author") != 0) {
+        printf(_SGR_REDF "invalid command\n"_SGR_RESET);
+        return 1;
+    }
+    // this function should only print the logs that have the same author name with argv[3]
+    // the author name is written in the line 3 of each commit log in the all_logs file
+    // the printing don't need to be colorized
+    FILE *all_logs = fopen(path_maker(find_source(), ".kiwit/commits/all_logs"), "r");
+    int counter = 0;
+    char *line = malloc(1000);
+    char **logs = malloc(8 * sizeof(char *));
+    for (int i = 0; i < 8; ++i) {
+        logs[i] = malloc(1000);
+    }
+    while (fgets(line, 1000, all_logs) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        strcpy(logs[counter % 7], line);
+        if (counter % 7 == 6) {
+            if (strstr(logs[2], argv[3]) != NULL) {
+                for (int i = 0; i < 7; ++i) {
+                    printf("%s\n", logs[i]);
+                }
+            }
+        }
+        counter++;
+    }
+    fclose(all_logs);
+}
+
+time_t string_to_time(char time_string[]) {
+    struct tm temp;
+    if (strptime(time_string, "%Y-%m-%d %H:%M:%S", &temp) == NULL) {
+        return -1;
+    }
+    return (mktime(&temp));
+}
+
+int run_log_since(int argc, char *const argv[]) {
+    if (strcmp(argv[2], "-since") != 0) {
+        printf(_SGR_REDF "invalid command\n"_SGR_RESET);
+        return 1;
+    }
+    // this function should only print the logs that have the commit time after argv[3]
+    // the commit time is written in the line 1 of each commit log in the all_logs file
+    // the printing don't need to be colorized
+    // this function should have an if to compare the time that its get in the argv[3] with this format: 2024-02-02 16:10 and then compare it from the times that saved in the all_logs file
+    FILE *all_logs = fopen(path_maker(find_source(), ".kiwit/commits/all_logs"), "r");
+    int counter = 0;
+    char *line = malloc(1000);
+    char **logs = malloc(8 * sizeof(char *));
+    for (int i = 0; i < 8; ++i) {
+        logs[i] = malloc(1000);
+    }
+    time_t since_time = string_to_time(argv[3]);
+    if (since_time == -1) {
+        printf(_SGR_REDF "invalid time format\n"_SGR_RESET);
+        return 1;
+    }
+    while (fgets(line, 1000, all_logs) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        strcpy(logs[counter % 7], line);
+        if (counter % 7 == 6) {
+            // logs[0] is something like this: The commit time is: 2024-02-02 16:10:59 and it has to change to 2024-02-02 16:10:59 that means the "The commit time is: " has to be removed
+            char *time_string = malloc(1000);
+            strcpy(time_string, logs[0]);
+            memmove(time_string, time_string + 20, strlen(time_string) - 20);
+            time_string[19] = '\0';
+            time_t commit_time = string_to_time(time_string);
+            printf("argv[ 3 ] : ****%s****\n", argv[3]);
+            printf("since_time: ****%s****\n", asctime(localtime(&since_time)));
+            printf("time_string: ****%s****\n", time_string);
+            printf("commit_time: ****%s****\n", asctime(localtime(&commit_time)));
+            printf("\n");
+
+//            if (commit_time >= since_time) {
+//                for (int i = 0; i < 7; ++i) {
+//                    printf("%s\n", logs[i]);
+//                }
+//            }
+        }
+        counter++;
+    }
+    fclose(all_logs);
 }
 
 int main(int argc, const char *argv[]) {
@@ -1431,14 +1610,38 @@ int main(int argc, const char *argv[]) {
         } else {
             return run_reset(argc, argv);
         }
-    } else if (strcmp(command, "commit") == 0 && argc >= 4 && (strcmp(argv[2], "-m") == 0 || strcmp(argv[2], "-s") == 0)) {
+    } else if (strcmp(command, "commit") == 0 && argc >= 4 &&
+               (strcmp(argv[2], "-m") == 0 || strcmp(argv[2], "-s") == 0)) {
         return run_commit(argc, argv);
-    } else if (strcmp(command, "set") == 0 && argc == 6 && strcmp(argv[2], "-m") == 0 && strcmp(argv[4], "-s") == 0) {
+    } else if (strcmp(command, "set") == 0 && argc == 6 && strcmp(argv[2], "-m") == 0 &&
+               strcmp(argv[4], "-s") == 0) {
         return run_set(argc, argv);
-    } else if (strcmp(command, "replace") == 0 && argc == 6 && strcmp(argv[2], "-m") == 0 && strcmp(argv[4], "-s") == 0) {
+    } else if (strcmp(command, "replace") == 0 && argc == 6 && strcmp(argv[2], "-m") == 0 &&
+               strcmp(argv[4], "-s") == 0) {
         return run_replace(argc, argv);
     } else if (strcmp(command, "remove") == 0 && argc == 4 && strcmp(argv[2], "-s") == 0) {
         return run_remove(argc, argv);
+    } else if (strcmp(command, "log") == 0) {
+        if (argc == 2) {
+            return run_log(argc, argv);
+        } else if (argc == 4) {
+            if (strcmp(argv[2], "-n") == 0) {
+                return run_log_n(argc, argv);
+            } else if (strcmp(argv[2], "-branch") == 0) {
+                return run_log_branch(argc, argv);
+            } else if (strcmp(argv[2], "-author") == 0) {
+                return run_log_author(argc, argv);
+            } else if (strcmp(argv[2], "-since") == 0) {
+                return run_log_since(argc, argv);
+            }
+//            else if (strcmp(argv[2], "-before") == 0) {
+//                return run_log_before(argc, argv);
+//            }
+//            else if (strcmp(argv[2], "-search") == 0) {
+//                return run_log_search(argc, argv);
+//            }
+        }
+
     } else {
         printf(_SGR_REDB "invalid command\n"_SGR_RESET);
     }
