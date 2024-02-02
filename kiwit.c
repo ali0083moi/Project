@@ -255,11 +255,18 @@ int create_configs(char *username, char *email) {
     fprintf(file, "master\n");
     fclose(file);
 
+    file = fopen(".kiwit/commits/master/last_commit_id", "w");
+    fprintf(file, "0\n");
+    fclose(file);
+
     file = fopen(".kiwit/commit_message_shortcuts", "w");
     fclose(file);
 
     file = fopen(".kiwit/current_branch", "w");
     fprintf(file, path_maker(find_source(), ".kiwit/commits/master"));
+    fclose(file);
+
+    file = fopen(".kiwit/commits/all_logs", "w");
     fclose(file);
 
     file = fopen(".kiwit/deleted", "w");
@@ -1831,5 +1838,3 @@ int main(int argc, const char *argv[]) {
     }
     return 0;
 }
-
-
