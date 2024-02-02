@@ -1381,6 +1381,7 @@ int run_log(int argc, char *const argv[]) {
     FILE *all_logs = fopen(path_maker(find_source(), ".kiwit/commits/all_logs"), "r");
     int counter = 0;
     char *line = malloc(1000);
+    int flag = 0;
     while (fgets(line, 1000, all_logs) != NULL) {
         if (line[strlen(line) - 1] == '\n') {
             line[strlen(line) - 1] = '\0';
@@ -1408,9 +1409,13 @@ int run_log(int argc, char *const argv[]) {
                 printf(_SGR_RESET"%s\n"_SGR_RESET, line);
                 break;
         }
+        flag = 1;
         counter++;
     }
     fclose(all_logs);
+    if (flag == 0) {
+        printf(_SGR_REDF "There is no commit in this project.\n"_SGR_RESET);
+    }
 }
 
 int run_log_n(int argc, char *const argv[]) {
@@ -1418,6 +1423,7 @@ int run_log_n(int argc, char *const argv[]) {
         printf(_SGR_REDF "invalid command\n"_SGR_RESET);
         return 1;
     }
+    int flag = 0;
     FILE *all_logs = fopen(path_maker(find_source(), ".kiwit/commits/all_logs"), "r");
     int counter = 0;
     char *line = malloc(1000);
@@ -1427,9 +1433,13 @@ int run_log_n(int argc, char *const argv[]) {
             line[strlen(line) - 1] = '\0';
         }
         printf("%s\n", line);
+        flag = 1;
         counter++;
     }
     fclose(all_logs);
+    if (flag == 0) {
+        printf(_SGR_REDF "There is no commit in this project.\n"_SGR_RESET);
+    }
 }
 
 int run_log_branch(int argc, char *const argv[]) {
@@ -1437,9 +1447,7 @@ int run_log_branch(int argc, char *const argv[]) {
         printf(_SGR_REDF "invalid command\n"_SGR_RESET);
         return 1;
     }
-    // this function should only print the logs that have the same branch name with argv[3]
-    // the branch name is written in the line 5 of each commit log in the all_logs file
-    // the printing don't need to be colorized
+    int flag = 0;
     FILE *all_logs = fopen(path_maker(find_source(), ".kiwit/commits/all_logs"), "r");
     int counter = 0;
     char *line = malloc(1000);
@@ -1456,12 +1464,16 @@ int run_log_branch(int argc, char *const argv[]) {
             if (strstr(logs[4], argv[3]) != NULL) {
                 for (int i = 0; i < 7; ++i) {
                     printf("%s\n", logs[i]);
+                    flag = 1;
                 }
             }
         }
         counter++;
     }
     fclose(all_logs);
+    if (flag == 0) {
+        printf(_SGR_REDF "There is no commit in this branch.\n"_SGR_RESET);
+    }
 }
 
 int run_log_author(int argc, char *const argv[]) {
@@ -1469,10 +1481,8 @@ int run_log_author(int argc, char *const argv[]) {
         printf(_SGR_REDF "invalid command\n"_SGR_RESET);
         return 1;
     }
-    // this function should only print the logs that have the same author name with argv[3]
-    // the author name is written in the line 3 of each commit log in the all_logs file
-    // the printing don't need to be colorized
     FILE *all_logs = fopen(path_maker(find_source(), ".kiwit/commits/all_logs"), "r");
+    int flag = 0;
     int counter = 0;
     char *line = malloc(1000);
     char **logs = malloc(8 * sizeof(char *));
@@ -1488,14 +1498,19 @@ int run_log_author(int argc, char *const argv[]) {
             if (strstr(logs[2], argv[3]) != NULL) {
                 for (int i = 0; i < 7; ++i) {
                     printf("%s\n", logs[i]);
+                    flag = 1;
                 }
             }
         }
         counter++;
     }
     fclose(all_logs);
+    if (flag == 0) {
+        printf(_SGR_REDF "There is no commit with this author.\n"_SGR_RESET);
+    }
 }
 
+// Sobhan
 time_t string_to_time(char time_string[]) {
     struct tm temp;
     if (strptime(time_string, "%Y-%m-%d %H:%M:%S", &temp) == NULL) {
@@ -1509,18 +1524,18 @@ int run_log_since(int argc, char *const argv[]) {
         printf(_SGR_REDF "invalid command\n"_SGR_RESET);
         return 1;
     }
-    // this function should only print the logs that have the commit time after argv[3]
-    // the commit time is written in the line 1 of each commit log in the all_logs file
-    // the printing don't need to be colorized
-    // this function should have an if to compare the time that its get in the argv[3] with this format: 2024-02-02 16:10 and then compare it from the times that saved in the all_logs file
     FILE *all_logs = fopen(path_maker(find_source(), ".kiwit/commits/all_logs"), "r");
+    int flag = 0;
     int counter = 0;
     char *line = malloc(1000);
     char **logs = malloc(8 * sizeof(char *));
     for (int i = 0; i < 8; ++i) {
         logs[i] = malloc(1000);
     }
-    time_t since_time = string_to_time(argv[3]);
+    char* since_time_string = malloc(1000);
+    strcpy(since_time_string, argv[3]);
+    since_time_string[19] = '\0';
+    time_t since_time = string_to_time(since_time_string);
     if (since_time == -1) {
         printf(_SGR_REDF "invalid time format\n"_SGR_RESET);
         return 1;
@@ -1531,27 +1546,105 @@ int run_log_since(int argc, char *const argv[]) {
         }
         strcpy(logs[counter % 7], line);
         if (counter % 7 == 6) {
-            // logs[0] is something like this: The commit time is: 2024-02-02 16:10:59 and it has to change to 2024-02-02 16:10:59 that means the "The commit time is: " has to be removed
             char *time_string = malloc(1000);
             strcpy(time_string, logs[0]);
             memmove(time_string, time_string + 20, strlen(time_string) - 20);
             time_string[19] = '\0';
             time_t commit_time = string_to_time(time_string);
-            printf("argv[ 3 ] : ****%s****\n", argv[3]);
-            printf("since_time: ****%s****\n", asctime(localtime(&since_time)));
-            printf("time_string: ****%s****\n", time_string);
-            printf("commit_time: ****%s****\n", asctime(localtime(&commit_time)));
-            printf("\n");
-
-//            if (commit_time >= since_time) {
-//                for (int i = 0; i < 7; ++i) {
-//                    printf("%s\n", logs[i]);
-//                }
-//            }
+            if (commit_time >= since_time) {
+                for (int i = 0; i < 7; ++i) {
+                    printf("%s\n", logs[i]);
+                    flag = 1;
+                }
+            }
         }
         counter++;
     }
     fclose(all_logs);
+    if (flag == 0) {
+        printf(_SGR_REDF "There is no commit after this time.\n"_SGR_RESET);
+    }
+}
+
+int run_log_before(int argc, char *const argv[]) {
+    if (strcmp(argv[2], "-before") != 0) {
+        printf(_SGR_REDF "invalid command\n"_SGR_RESET);
+        return 1;
+    }
+    FILE *all_logs = fopen(path_maker(find_source(), ".kiwit/commits/all_logs"), "r");
+    int flag = 0;
+    int counter = 0;
+    char *line = malloc(1000);
+    char **logs = malloc(8 * sizeof(char *));
+    for (int i = 0; i < 8; ++i) {
+        logs[i] = malloc(1000);
+    }
+    char* since_time_string = malloc(1000);
+    strcpy(since_time_string, argv[3]);
+    since_time_string[19] = '\0';
+    time_t since_time = string_to_time(since_time_string);
+    if (since_time == -1) {
+        printf(_SGR_REDF "invalid time format\n"_SGR_RESET);
+        return 1;
+    }
+    while (fgets(line, 1000, all_logs) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        strcpy(logs[counter % 7], line);
+        if (counter % 7 == 6) {
+            char *time_string = malloc(1000);
+            strcpy(time_string, logs[0]);
+            memmove(time_string, time_string + 20, strlen(time_string) - 20);
+            time_string[19] = '\0';
+            time_t commit_time = string_to_time(time_string);
+            if (commit_time <= since_time) {
+                for (int i = 0; i < 7; ++i) {
+                    printf("%s\n", logs[i]);
+                    flag = 1;
+                }
+            }
+        }
+        counter++;
+    }
+    fclose(all_logs);
+    if (flag == 0) {
+        printf(_SGR_REDF "There is no commit before this time.\n"_SGR_RESET);
+    }
+}
+
+int run_log_search(int argc, char *const argv[]) {
+    if (strcmp(argv[2], "-search") != 0) {
+        printf(_SGR_REDF "invalid command\n"_SGR_RESET);
+        return 1;
+    }
+    FILE *all_logs = fopen(path_maker(find_source(), ".kiwit/commits/all_logs"), "r");
+    int counter = 0;
+    int flag = 0;
+    char *line = malloc(1000);
+    char **logs = malloc(8 * sizeof(char *));
+    for (int i = 0; i < 8; ++i) {
+        logs[i] = malloc(1000);
+    }
+    while (fgets(line, 1000, all_logs) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        strcpy(logs[counter % 7], line);
+        if (counter % 7 == 6) {
+            if (strstr(logs[1], argv[3]) != NULL) {
+                for (int i = 0; i < 7; ++i) {
+                    printf("%s\n", logs[i]);
+                    flag = 1;
+                }
+            }
+        }
+        counter++;
+    }
+    fclose(all_logs);
+    if (flag == 0) {
+        printf(_SGR_REDF "There is no commit with this word.\n"_SGR_RESET);
+    }
 }
 
 int main(int argc, const char *argv[]) {
@@ -1633,13 +1726,11 @@ int main(int argc, const char *argv[]) {
                 return run_log_author(argc, argv);
             } else if (strcmp(argv[2], "-since") == 0) {
                 return run_log_since(argc, argv);
+            } else if (strcmp(argv[2], "-before") == 0) {
+                return run_log_before(argc, argv);
+            } else if (strcmp(argv[2], "-search") == 0) {
+                return run_log_search(argc, argv);
             }
-//            else if (strcmp(argv[2], "-before") == 0) {
-//                return run_log_before(argc, argv);
-//            }
-//            else if (strcmp(argv[2], "-search") == 0) {
-//                return run_log_search(argc, argv);
-//            }
         }
 
     } else {
