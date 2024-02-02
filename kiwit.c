@@ -251,6 +251,9 @@ int create_configs(char *username, char *email) {
     fprintf(file, "0\n");
     fclose(file);
 
+    file = fopen(".kiwit/commit_message_shortcuts", "w");
+    fclose(file);
+
     file = fopen(".kiwit/current_branch", "w");
     fprintf(file, path_maker(find_source(), ".kiwit/commits/master"));
     fclose(file);
@@ -1059,10 +1062,6 @@ int run_reset_undo(int argc, char *const argv[]) {
 }
 
 int run_commit(int argc, char *const argv[]) {
-    if (strcmp(argv[2], "-m") != 0) {
-        printf(_SGR_REDF "invalid command\n"_SGR_RESET);
-        return 1;
-    }
     if (argc < 4) {
         printf(_SGR_REDF "Please write your commit message\n"_SGR_RESET);
         return 1;
@@ -1071,6 +1070,38 @@ int run_commit(int argc, char *const argv[]) {
         printf(_SGR_REDF "The commit message should have at most 72 characters\n"_SGR_RESET);
         return 1;
     }
+
+    char *commit_message = malloc(1000);
+    if (strcmp(argv[2], "-m") == 0) {
+        strcpy(commit_message, argv[3]);
+    } else if (strcmp(argv[2], "-s") == 0) {
+        FILE *commit_message_shortcuts = fopen(path_maker(find_source(), ".kiwit/commit_message_shortcuts"), "r");
+        char *line = malloc(1000);
+        while (fgets(line, 1000, commit_message_shortcuts) != NULL) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            if (strstr(line, argv[3]) != NULL) {
+                strcpy(commit_message, line);
+                break;
+            }
+        }
+        fclose(commit_message_shortcuts);
+    }
+    char *final_commit_message = malloc(1000);
+    for (int k = 0; k < strlen(commit_message); ++k) {
+        if (commit_message[k] == '&') {
+            break;
+        }
+        final_commit_message[k] = commit_message[k];
+    }
+    final_commit_message[strlen(final_commit_message)] = '\0';
+
+    if (strlen(final_commit_message) == 0) {
+        printf(_SGR_REDF "There is no commit message with this shortcut.\n"_SGR_RESET);
+        return 1;
+    }
+
     FILE *staged_files_address = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
     char *line = malloc(1025);
     int flag = 0;
@@ -1080,12 +1111,19 @@ int run_commit(int argc, char *const argv[]) {
             line[strlen(line) - 1] = '\0';
         }
         flag = 1;
-        file_counter++;
         break;
     }
     if (flag == 0) {
         printf(_SGR_REDF "There is no file to commit\n"_SGR_RESET);
         return 1;
+    }
+    fclose(staged_files_address);
+    staged_files_address = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
+    while (fgets(line, 1024, staged_files_address) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        file_counter++;
     }
     fclose(staged_files_address);
     FILE *current_branch = fopen(path_maker(find_source(), ".kiwit/current_branch"), "r");
@@ -1160,7 +1198,7 @@ int run_commit(int argc, char *const argv[]) {
             i--;
         }
         memmove(file_name, line + i + 1, j * sizeof(char));
-        fprintf(commit_file, "%s\n",path_maker(commit_address_slash, file_name));
+        fprintf(commit_file, "%s\n", path_maker(commit_address_slash, file_name));
     }
     fclose(stage_file);
     fclose(commit_file);
@@ -1224,7 +1262,8 @@ int run_commit(int argc, char *const argv[]) {
     fclose(all_logs);
     fclose(all_logs_2);
     remove(path_maker(find_source(), ".kiwit/commits/all_logs"));
-    rename(path_maker(find_source(), ".kiwit/commits/all_logs_2"), path_maker(find_source(), ".kiwit/commits/all_logs"));
+    rename(path_maker(find_source(), ".kiwit/commits/all_logs_2"),
+           path_maker(find_source(), ".kiwit/commits/all_logs"));
     //
 
     // commit printng
@@ -1233,6 +1272,107 @@ int run_commit(int argc, char *const argv[]) {
     printf("The commit time is: %d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
            tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     printf("The commit message is: %s\n", argv[3]);
+}
+
+int run_set(int argc, char *const argv[]) {
+    //shortcut message format is message&shortcut
+
+    if (strcmp(argv[2], "-m") != 0 || strcmp(argv[4], "-s") != 0) {
+        printf(_SGR_REDF "invalid command\n"_SGR_RESET);
+        return 1;
+    }
+    if (argc < 6) {
+        printf(_SGR_REDF "Please write your shortcut.\n"_SGR_RESET);
+        return 1;
+    }
+    if (strlen(argv[3]) > 72) {
+        printf(_SGR_REDF "The shortcut should have at most 72 characters\n"_SGR_RESET);
+        return 1;
+    }
+    FILE *shortcut_file = fopen(path_maker(find_source(), ".kiwit/commit_message_shortcuts"), "r");
+    if (shortcut_file == NULL) {
+        printf("Error opening file!\n");
+        exit(1);
+    }
+    char *line = malloc(1000);
+    while (fgets(line, 1000, shortcut_file) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        if (strstr(line, argv[3]) != NULL) {
+            printf(_SGR_REDF "This shortcut is already exist.\n"_SGR_RESET);
+            fclose(shortcut_file);
+            break;
+        }
+    }
+    fclose(shortcut_file);
+    shortcut_file = fopen(path_maker(find_source(), ".kiwit/commit_message_shortcuts"), "a");
+    fprintf(shortcut_file, "%s&%s\n", argv[3], argv[5]);
+    fclose(shortcut_file);
+    printf(_SGR_GREENF"The shortcut message has been added successfully in this project.\n"_SGR_RESET);
+}
+
+int run_replace (int argc, char *const argv[]) {
+    if (strcmp(argv[2], "-m") != 0 || strcmp(argv[4], "-s") != 0) {
+        printf(_SGR_REDF "invalid command\n"_SGR_RESET);
+        return 1;
+    }
+    if (argc < 6) {
+        printf(_SGR_REDF "Please write your shortcut.\n"_SGR_RESET);
+        return 1;
+    }
+    if (strlen(argv[3]) > 72) {
+        printf(_SGR_REDF "The shortcut should have at most 72 characters\n"_SGR_RESET);
+        return 1;
+    }
+    FILE *shortcut_file = fopen(path_maker(find_source(), ".kiwit/commit_message_shortcuts"), "r");
+    FILE *shortcut_file_2 = fopen(path_maker(find_source(), ".kiwit/commit_message_shortcuts_2"), "w");
+    char *line = malloc(1000);
+    int flag = 0;
+    while (fgets(line, 1000, shortcut_file) != NULL) {
+        if (strstr(line, argv[5]) != NULL) {
+            fprintf(shortcut_file_2, "%s&%s\n", argv[3], argv[5]);
+            flag = 1;
+        } else {
+            fprintf(shortcut_file_2, "%s\n", line);
+        }
+    }
+    fclose(shortcut_file);
+    fclose(shortcut_file_2);
+    if (flag == 0) {
+        printf(_SGR_REDF "This shortcut is not exist.\n"_SGR_RESET);
+        return 1;
+    }
+    remove(path_maker(find_source(), ".kiwit/commit_message_shortcuts"));
+    rename(path_maker(find_source(), ".kiwit/commit_message_shortcuts_2"), path_maker(find_source(), ".kiwit/commit_message_shortcuts"));
+    printf(_SGR_GREENF"The shortcut message has been replaced successfully in this project.\n"_SGR_RESET);
+}
+
+int run_remove(int argc, char *const argv[]) {
+    if (strcmp(argv[2], "-s") != 0) {
+        printf(_SGR_REDF "invalid command\n"_SGR_RESET);
+        return 1;
+    }
+    FILE *shortcut_file = fopen(path_maker(find_source(), ".kiwit/commit_message_shortcuts"), "r");
+    FILE *shortcut_file_2 = fopen(path_maker(find_source(), ".kiwit/commit_message_shortcuts_2"), "w");
+    char *line = malloc(1000);
+    int flag = 0;
+    while (fgets(line, 1000, shortcut_file) != NULL) {
+        if (strstr(line, argv[3]) != NULL) {
+            flag = 1;
+        } else {
+            fprintf(shortcut_file_2, "%s\n", line);
+        }
+    }
+    fclose(shortcut_file);
+    fclose(shortcut_file_2);
+    if (flag == 0) {
+        printf(_SGR_REDF "This shortcut is not exist.\n"_SGR_RESET);
+        return 1;
+    }
+    remove(path_maker(find_source(), ".kiwit/commit_message_shortcuts"));
+    rename(path_maker(find_source(), ".kiwit/commit_message_shortcuts_2"), path_maker(find_source(), ".kiwit/commit_message_shortcuts"));
+    printf(_SGR_GREENF"The shortcut message has been removed successfully in this project.\n"_SGR_RESET);
 }
 
 int main(int argc, const char *argv[]) {
@@ -1249,7 +1389,9 @@ int main(int argc, const char *argv[]) {
     while (fgets(line, 1000, file) != NULL) {
         if (strstr(line, argv[1]) != NULL) {
             sscanf(line, "%s", command);
-            break;
+            if (strcmp(command, argv[1]) == 0) {
+                break;
+            }
         }
     }
     fclose(file);
@@ -1260,7 +1402,9 @@ int main(int argc, const char *argv[]) {
         while (fgets(line, 1000, file) != NULL) {
             if (strstr(line, argv[1]) != NULL) {
                 sscanf(line, "%s", command);
-                break;
+                if (strcmp(command, argv[1]) == 0) {
+                    break;
+                }
             }
         }
         fclose(file);
@@ -1287,8 +1431,14 @@ int main(int argc, const char *argv[]) {
         } else {
             return run_reset(argc, argv);
         }
-    } else if (strcmp(command, "commit") == 0 && argc >= 4 && strcmp(argv[2], "-m") == 0) {
+    } else if (strcmp(command, "commit") == 0 && argc >= 4 && (strcmp(argv[2], "-m") == 0 || strcmp(argv[2], "-s") == 0)) {
         return run_commit(argc, argv);
+    } else if (strcmp(command, "set") == 0 && argc == 6 && strcmp(argv[2], "-m") == 0 && strcmp(argv[4], "-s") == 0) {
+        return run_set(argc, argv);
+    } else if (strcmp(command, "replace") == 0 && argc == 6 && strcmp(argv[2], "-m") == 0 && strcmp(argv[4], "-s") == 0) {
+        return run_replace(argc, argv);
+    } else if (strcmp(command, "remove") == 0 && argc == 4 && strcmp(argv[2], "-s") == 0) {
+        return run_remove(argc, argv);
     } else {
         printf(_SGR_REDB "invalid command\n"_SGR_RESET);
     }
