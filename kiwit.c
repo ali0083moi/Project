@@ -1120,6 +1120,12 @@ int run_commit(int argc, char *const argv[]) {
     strcat(commit_address, commit_ID);
     if (mkdir(commit_address, 0755) != 0)
         return 1;
+    char *commit_data_folder = malloc(1025);
+    strcpy(commit_data_folder, commit_address);
+    strcat(commit_data_folder, "/data");
+    if (mkdir(commit_data_folder, 0755) != 0)
+        return 1;
+    strcat(commit_data_folder, "/");
     char *commit_address_slash = malloc(1025);
     strcpy(commit_address_slash, commit_address);
     strcat(commit_address_slash, "/");
@@ -1141,7 +1147,7 @@ int run_commit(int argc, char *const argv[]) {
     }
     fclose(stage_file);
     stage_file = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
-    FILE *commit_file = fopen(path_maker(commit_address_slash, "staging"), "w");
+    FILE *commit_file = fopen(path_maker(commit_data_folder, "staging"), "w");
     while (fgets(line, 1024, stage_file)) {
         if (line[strlen(line) - 1] == '\n') {
             line[strlen(line) - 1] = '\0';
@@ -1165,7 +1171,7 @@ int run_commit(int argc, char *const argv[]) {
     strcpy(command, "cp ");
     strcat(command, staging_2_address);
     strcat(command, " ");
-    strcat(command, commit_address_slash);
+    strcat(command, commit_data_folder);
     system(command);
     stage_file = fopen(path_maker(find_source(), ".kiwit/staging"), "w");
     fclose(stage_file);
@@ -1179,12 +1185,18 @@ int run_commit(int argc, char *const argv[]) {
     // fourth line : the commit ID
     // fifth line : the branch name
     // sixth line : count of the files in the commit
-    FILE *commit_log = fopen(path_maker(commit_address_slash, "commit_log"), "w");
+    FILE *commit_log = fopen(path_maker(commit_data_folder, "commit_log"), "w");
+    FILE *all_logs = fopen(path_maker(find_source(), ".kiwit/commits/all_logs"), "r");
+    FILE *all_logs_2 = fopen(path_maker(find_source(), ".kiwit/commits/all_logs_2"), "w");
+
     time_t t = time(NULL);
     struct tm tm = *localtime(&t);
     fprintf(commit_log, "%d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
             tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    fprintf(all_logs_2, "The commit time is: %d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
+            tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     fprintf(commit_log, "%s\n", argv[3]);
+    fprintf(all_logs_2, "The commit message is: %s\n", argv[3]);
     FILE *config_file = fopen(path_maker(find_source(), ".kiwit/config"), "r");
     char *committer_username = malloc(1025);
     fgets(committer_username, 1024, config_file);
@@ -1193,16 +1205,32 @@ int run_commit(int argc, char *const argv[]) {
     }
     fclose(config_file);
     fprintf(commit_log, "%s\n", committer_username);
+    fprintf(all_logs_2, "The committer user.name is: %s\n", committer_username);
     fprintf(commit_log, "%s\n", commit_ID);
+    fprintf(all_logs_2, "The commit ID is: %s\n", commit_ID);
     fprintf(commit_log, "%s\n", branch_name);
+    fprintf(all_logs_2, "The branch name is: %s\n", branch_name);
     fprintf(commit_log, "%d\n", file_counter);
+    fprintf(all_logs_2, "The files count of this commit is: %d\n", file_counter);
     fclose(commit_log);
+    fprintf(all_logs_2, "-\n");
+    char *line2 = malloc(1025);
+    while (fgets(line, 1024, all_logs) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        fprintf(all_logs_2, "%s\n", line);
+    }
+    fclose(all_logs);
+    fclose(all_logs_2);
+    remove(path_maker(find_source(), ".kiwit/commits/all_logs"));
+    rename(path_maker(find_source(), ".kiwit/commits/all_logs_2"), path_maker(find_source(), ".kiwit/commits/all_logs"));
     //
 
     // commit printng
     printf(_SGR_GREENF "The commit has been done successfully.\n"_SGR_RESET);
     printf("The commit ID is: %s\n", commit_ID);
-    printf("%d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
+    printf("The commit time is: %d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
            tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     printf("The commit message is: %s\n", argv[3]);
 }
