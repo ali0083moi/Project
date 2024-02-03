@@ -1200,6 +1200,8 @@ int run_commit(int argc, char *const argv[]) {
 
     char *command = malloc(4000);
     if (commit_exist) {
+        last_commit_id_int -= 2;
+        sprintf(last_commit_id_str, "%d", last_commit_id_int);
         strcpy(command, "cp -r ");
         strcat(command, branch_address);
         strcat(command, "/");
@@ -1210,8 +1212,12 @@ int run_commit(int argc, char *const argv[]) {
         strcat(command, "/ ");
         strcat(command, commit_address);
         system(command);
+        last_commit_id_int += 2;
+        sprintf(last_commit_id_str, "%d", last_commit_id_int);
     }
-
+    char *past_commit_id = malloc(1025);
+    sprintf(past_commit_id, "%d", commit_ID_int);
+    commit_ID_int += 2;
     FILE *stage_file = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
     while (fgets(line, 1024, stage_file)) {
         if (line[strlen(line) - 1] == '\n') {
@@ -1229,32 +1235,174 @@ int run_commit(int argc, char *const argv[]) {
         remove(line);
     }
     fclose(stage_file);
-    stage_file = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
-    FILE *commit_file = fopen(path_maker(commit_data_folder, "staging"), "w");
-    while (fgets(line, 1024, stage_file)) {
-        if (line[strlen(line) - 1] == '\n') {
-            line[strlen(line) - 1] = '\0';
+    char *past_commit_address = malloc(1025);
+    strcpy(past_commit_address, branch_address);
+    strcat(past_commit_address, "/");
+    strcat(past_commit_address, past_commit_id);
+
+    if (commit_exist) {
+        stage_file = fopen(path_maker(past_commit_address, "/data/staging"), "r");
+        FILE *commit_file = fopen(path_maker(commit_data_folder, "staging"), "w");
+        while (fgets(line, 1024, stage_file)) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            char *file_name = malloc(2000);
+            strcpy(file_name, line);
+            int i = strlen(file_name), j = 0;
+            while (file_name[i] != '/') {
+                j++;
+                i--;
+            }
+            memmove(file_name, line + i + 1, j * sizeof(char));
+            fprintf(commit_file, "%s\n", path_maker(commit_address_slash, file_name));
         }
-        char *file_name = malloc(2000);
-        strcpy(file_name, line);
-        int i = strlen(file_name), j = 0;
-        while (file_name[i] != '/') {
-            j++;
-            i--;
+        fclose(stage_file);
+        fclose(commit_file);
+
+        stage_file = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
+        commit_file = fopen(path_maker(commit_data_folder, "staging_tmp"), "w");
+        while (fgets(line, 1024, stage_file)) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            char *file_name = malloc(2000);
+            strcpy(file_name, line);
+            int i = strlen(file_name), j = 0;
+            while (file_name[i] != '/') {
+                j++;
+                i--;
+            }
+            memmove(file_name, line + i + 1, j * sizeof(char));
+            fprintf(commit_file, "%s\n", path_maker(commit_address_slash, file_name));
         }
-        memmove(file_name, line + i + 1, j * sizeof(char));
-        fprintf(commit_file, "%s\n", path_maker(commit_address_slash, file_name));
+        fclose(stage_file);
+        fclose(commit_file);
+
+        FILE *file1 = fopen(path_maker(commit_data_folder, "staging"), "r");
+        FILE *file2 = fopen(path_maker(commit_data_folder, "staging_tmp"), "r");
+        FILE *file3 = fopen(path_maker(commit_data_folder, "staging_tmp2"), "w");
+        char *line1 = malloc(1025);
+        char *line2 = malloc(1025);
+        int flag2 = 0;
+        while (fgets(line1, 1024, file1) != NULL) {
+            if (line1[strlen(line1) - 1] == '\n') {
+                line1[strlen(line1) - 1] = '\0';
+            }
+            flag2 = 0;
+            while (fgets(line2, 1024, file2) != NULL) {
+                if (line2[strlen(line2) - 1] == '\n') {
+                    line2[strlen(line2) - 1] = '\0';
+                }
+                if (strcmp(line1, line2) == 0) {
+                    flag2 = 1;
+                    break;
+                }
+            }
+            if (flag2 == 1) {
+                fprintf(file3, "%s\n", line1);
+            }
+        }
+        fclose(file1);
+        fclose(file2);
+        fclose(file3);
+        remove(path_maker(commit_data_folder, "staging_tmp"));
+
+        file1 = fopen(path_maker(commit_data_folder, "staging_tmp2"), "r");
+        file2 = fopen(path_maker(commit_data_folder, "staging"), "a");
+        while (fgets(line1, 1024, file1) != NULL) {
+            if (line1[strlen(line1) - 1] == '\n') {
+                line1[strlen(line1) - 1] = '\0';
+            }
+            fprintf(file2, "%s\n", line1);
+        }
+        fclose(file1);
+        fclose(file2);
+        remove(path_maker(commit_data_folder, "staging_tmp2"));
+    } else {
+        stage_file = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
+        FILE *commit_file = fopen(path_maker(commit_data_folder, "staging"), "w");
+        while (fgets(line, 1024, stage_file)) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            char *file_name = malloc(2000);
+            strcpy(file_name, line);
+            int i = strlen(file_name), j = 0;
+            while (file_name[i] != '/') {
+                j++;
+                i--;
+            }
+            memmove(file_name, line + i + 1, j * sizeof(char));
+            fprintf(commit_file, "%s\n", path_maker(commit_address_slash, file_name));
+        }
+        fclose(stage_file);
+        fclose(commit_file);
     }
-    fclose(stage_file);
-    fclose(commit_file);
-    char *staging_2_address = malloc(1025);
-    strcpy(staging_2_address, find_source());
-    strcat(staging_2_address, ".kiwit/staging_2");
-    strcpy(command, "cp ");
-    strcat(command, staging_2_address);
-    strcat(command, " ");
-    strcat(command, commit_data_folder);
-    system(command);
+
+    if (commit_exist) {
+
+        char *staging_2_address = malloc(1025);
+        strcpy(staging_2_address, past_commit_address);
+        strcat(staging_2_address, "/data/staging_2");
+        strcpy(command, "cp ");
+        strcat(command, staging_2_address);
+        strcat(command, " ");
+        strcat(command, commit_data_folder);
+        system(command);
+
+        FILE *file1 = fopen(path_maker(commit_data_folder, "staging_2"), "r");
+        FILE *file2 = fopen(path_maker(find_source(), ".kiwit/staging_2"), "r");
+        FILE *file3 = fopen(path_maker(commit_data_folder, "staging_2_tmp"), "w");
+        char *line1 = malloc(2000);
+        char *line2 = malloc(2000);
+        int flag2 = 0;
+        while (fgets(line1, 1024, file1) != NULL) {
+            if (line1[strlen(line1) - 1] == '\n') {
+                line1[strlen(line1) - 1] = '\0';
+            }
+            flag2 = 0;
+            while (fgets(line2, 1024, file2) != NULL) {
+                if (line2[strlen(line2) - 1] == '\n') {
+                    line2[strlen(line2) - 1] = '\0';
+                }
+                if (strcmp(line1, line2) == 0) {
+                    flag2 = 1;
+                    break;
+                }
+            }
+            if (flag2 == 1) {
+                fprintf(file3, "%s\n", line1);
+            }
+        }
+        fclose(file1);
+        fclose(file2);
+        fclose(file3);
+
+        file1 = fopen(path_maker(commit_data_folder, "staging_2_tmp"), "r");
+        file2 = fopen(path_maker(commit_data_folder, "staging_2"), "a");
+        while (fgets(line1, 1024, file1) != NULL) {
+            if (line1[strlen(line1) - 1] == '\n') {
+                line1[strlen(line1) - 1] = '\0';
+            }
+            fprintf(file2, "%s\n", line1);
+        }
+        fclose(file1);
+        fclose(file2);
+        remove(path_maker(commit_data_folder, "staging_2_tmp"));
+    }
+
+    else {
+        char *staging_2_address = malloc(1025);
+        strcpy(staging_2_address, find_source());
+        strcat(staging_2_address, ".kiwit/staging_2");
+        strcpy(command, "cp ");
+        strcat(command, staging_2_address);
+        strcat(command, " ");
+        strcat(command, commit_data_folder);
+        system(command);
+    }
+
     stage_file = fopen(path_maker(find_source(), ".kiwit/staging"), "w");
     fclose(stage_file);
     stage_file = fopen(path_maker(find_source(), ".kiwit/staging_2"), "w");
@@ -1296,7 +1444,6 @@ int run_commit(int argc, char *const argv[]) {
     fprintf(all_logs_2, "The files count of this commit is: %d\n", file_counter);
     fclose(commit_log);
     fprintf(all_logs_2, "-\n");
-    char *line2 = malloc(1025);
     while (fgets(line, 1024, all_logs) != NULL) {
         if (line[strlen(line) - 1] == '\n') {
             line[strlen(line) - 1] = '\0';
