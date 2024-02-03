@@ -21,17 +21,17 @@ char *root_email;
 char *root_username;
 char *root_path = "/Users/ali/Documents/Daaneshgah/Term1/FOP/Project/data/";
 
-// file name maker
-/*
-        char *file_name = malloc(2000);
-        strcpy(file_name, line);
-        int i = strlen(file_name), j = 0;
-        while (file_name[i] != '/') {
-            j++;
-            i--;
-        }
-        memmove(file_name, file_path + i + 1, j * sizeof(char));
- */
+char *file_name_maker(char *line) {
+    char *file_name = malloc(2000);
+    strcpy(file_name, line);
+    int i = strlen(file_name), j = 0;
+    while (file_name[i] != '/') {
+        j++;
+        i--;
+    }
+    memmove(file_name, line + i + 1, j * sizeof(char));
+    return file_name;
+}
 
 // hash code maker
 //unsigned long hash(char *str) {
@@ -1185,7 +1185,7 @@ int run_commit(int argc, char *const argv[]) {
     char *commit_address = malloc(1025);
     strcpy(commit_address, branch_address);
     strcat(commit_address, "/");
-    strcat(commit_address, commit_ID);
+    strcat(commit_address, last_commit_id_str);
     if (mkdir(commit_address, 0755) != 0)
         return 1;
     char *commit_data_folder = malloc(1025);
@@ -1206,17 +1206,18 @@ int run_commit(int argc, char *const argv[]) {
         strcat(command, branch_address);
         strcat(command, "/");
         strcat(command, last_commit_id_str);
-        commit_ID_int -= 2;
+        last_commit_id_int += 1;
         char *commit_ID_2 = malloc(1025);
-        sprintf(commit_ID_2, "%d", commit_ID_int);
+        sprintf(commit_ID_2, "%d", last_commit_id_int);
         strcat(command, "/ ");
         strcat(command, commit_address);
         system(command);
-        last_commit_id_int += 2;
+        last_commit_id_int += 1;
         sprintf(last_commit_id_str, "%d", last_commit_id_int);
     }
+
     char *past_commit_id = malloc(1025);
-    sprintf(past_commit_id, "%d", commit_ID_int);
+    sprintf(past_commit_id, "%d", last_commit_id_int - 2);
     commit_ID_int += 2;
     FILE *stage_file = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
     while (fgets(line, 1024, stage_file)) {
@@ -1235,6 +1236,7 @@ int run_commit(int argc, char *const argv[]) {
         remove(line);
     }
     fclose(stage_file);
+
     char *past_commit_address = malloc(1025);
     strcpy(past_commit_address, branch_address);
     strcat(past_commit_address, "/");
@@ -1259,7 +1261,6 @@ int run_commit(int argc, char *const argv[]) {
         }
         fclose(stage_file);
         fclose(commit_file);
-
         stage_file = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
         commit_file = fopen(path_maker(commit_data_folder, "staging_tmp"), "w");
         while (fgets(line, 1024, stage_file)) {
@@ -1299,7 +1300,7 @@ int run_commit(int argc, char *const argv[]) {
                     break;
                 }
             }
-            if (flag2 == 1) {
+            if (flag2 == 0) {
                 fprintf(file3, "%s\n", line1);
             }
         }
@@ -1371,7 +1372,7 @@ int run_commit(int argc, char *const argv[]) {
                     break;
                 }
             }
-            if (flag2 == 1) {
+            if (flag2 == 0) {
                 fprintf(file3, "%s\n", line1);
             }
         }
@@ -1390,9 +1391,7 @@ int run_commit(int argc, char *const argv[]) {
         fclose(file1);
         fclose(file2);
         remove(path_maker(commit_data_folder, "staging_2_tmp"));
-    }
-
-    else {
+    } else {
         char *staging_2_address = malloc(1025);
         strcpy(staging_2_address, find_source());
         strcat(staging_2_address, ".kiwit/staging_2");
@@ -1843,6 +1842,15 @@ int run_log_search(int argc, char *const argv[]) {
 }
 
 int run_branch(int argc, char *const argv[]) {
+    char *current_branch_address = malloc(1000);
+    FILE *current_branch_file = fopen(path_maker(find_source(), ".kiwit/current_branch"), "r");
+    fgets(current_branch_address, 1000, current_branch_file);
+    if (current_branch_address[strlen(current_branch_address) - 1] == '\n') {
+        current_branch_address[strlen(current_branch_address) - 1] = '\0';
+    }
+    fclose(current_branch_file);
+    char *current_branch_name = malloc(1000);
+    strcpy(current_branch_name, file_name_maker(current_branch_address));
     if (argc == 2) {
         FILE *branches = fopen(path_maker(find_source(), ".kiwit/all_branch_names"), "r");
         char *line = malloc(1000);
@@ -1851,7 +1859,11 @@ int run_branch(int argc, char *const argv[]) {
             if (line[strlen(line) - 1] == '\n') {
                 line[strlen(line) - 1] = '\0';
             }
-            printf("%s\n", line);
+            if (strcmp(line, current_branch_name) == 0) {
+                printf(_SGR_GREENF"%s\n"_SGR_RESET, line);
+            } else {
+                printf("%s\n", line);
+            }
             flag = 1;
         }
         fclose(branches);
@@ -1881,14 +1893,156 @@ int run_branch(int argc, char *const argv[]) {
         if (mkdir(branch_address, 0755) != 0) {
             return 1;
         }
-        FILE *last_commit_id = fopen(path_maker(branch_address, "/last_commit_id"), "w");
-        fprintf(last_commit_id, "0\n");
+
+
+        char *current_branch_id = malloc(1000);
+        FILE *last_commit_id = fopen(path_maker(current_branch_address, "/last_commit_id"), "r");
+        fgets(current_branch_id, 1000, last_commit_id);
+        if (current_branch_id[strlen(current_branch_id) - 1] == '\n') {
+            current_branch_id[strlen(current_branch_id) - 1] = '\0';
+        }
         fclose(last_commit_id);
+        int last_commit_id_int = atoi(current_branch_id);
+        last_commit_id_int--;
+        sprintf(current_branch_id, "%d", last_commit_id_int);
+        strcat(current_branch_address, "/");
+        strcat(current_branch_address, current_branch_id);
+        strcat(current_branch_address, "/");
+        char *command = malloc(4000);
+        strcpy(command, "cp -r ");
+        strcat(command, current_branch_address);
+        strcat(command, " ");
+        strcat(command, branch_address);
+        strcat(command, "/0/");
+        system(command);
+
+        last_commit_id = fopen(path_maker(branch_address, "/last_commit_id"), "w");
+        fprintf(last_commit_id, "1\n");
+        fclose(last_commit_id);
+
+        FILE *commit_ID_file = fopen(path_maker(find_source(), ".kiwit/commit_ID"), "r");
+        char *commit_ID = malloc(1025);
+        fgets(commit_ID, 1024, commit_ID_file);
+        if (commit_ID[strlen(commit_ID) - 1] == '\n') {
+            commit_ID[strlen(commit_ID) - 1] = '\0';
+        }
+        fclose(commit_ID_file);
+        int commit_ID_int = atoi(commit_ID);
+        commit_ID_int++;
+        commit_ID_file = fopen(path_maker(find_source(), ".kiwit/commit_ID"), "w");
+        fprintf(commit_ID_file, "%d\n", commit_ID_int);
+        fclose(commit_ID_file);
+
+        //current_branch_address
+        char *current_data_folder = malloc(2000);
+        strcpy(current_data_folder, current_branch_address);
+        strcat(current_data_folder, "data/");
+        char *new_commit_folder = malloc(2000);
+        strcpy(new_commit_folder, branch_address);
+        strcat(new_commit_folder, "/0/");
+        FILE *staging_file = fopen(path_maker(current_data_folder, "staging"), "r");
+        FILE *new_staging_file = fopen(path_maker(new_commit_folder, "data/staging"), "w");
+        char *file_name = malloc(1000);
+        while (fgets(line, 1000, staging_file) != NULL) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            strcpy(file_name, file_name_maker(line));
+            sprintf(line, "%s%s", new_commit_folder, file_name);
+            fprintf(new_staging_file, "%s\n", line);
+        }
+        fclose(staging_file);
+        fclose(new_staging_file);
+
+
+        FILE *new_commit_log_file = fopen(path_maker(new_commit_folder, "data/commit_log"), "w");
+        FILE *current_commit_log_file = fopen(path_maker(current_data_folder, "commit_log"), "r");
+        FILE *all_logs = fopen(path_maker(find_source(), ".kiwit/commits/all_logs"), "r");
+        FILE *all_logs_2 = fopen(path_maker(find_source(), ".kiwit/commits/all_logs_2"), "w");
+        time_t t = time(NULL);
+        struct tm tm = *localtime(&t);
+        fgets(line, 1000, current_commit_log_file);
+        fprintf(new_commit_log_file, "%d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
+                tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+        fprintf(all_logs_2, "The commit time is: %d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
+                tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+        fgets(line, 1000, current_commit_log_file);
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        fprintf(new_commit_log_file, "%s\n", line);
+        fgets(line, 1000, current_commit_log_file);
+        FILE *config_file = fopen(path_maker(find_source(), ".kiwit/config"), "r");
+        char *committer_username = malloc(1025);
+        fgets(committer_username, 1024, config_file);
+        if (committer_username[strlen(committer_username) - 1] == '\n') {
+            committer_username[strlen(committer_username) - 1] = '\0';
+        }
+        fclose(config_file);
+        fprintf(new_commit_log_file, "%s\n", committer_username);
+        fprintf(all_logs_2, "The committer user.name is: %s\n", committer_username);
+        fgets(line, 1000, current_commit_log_file);
+        fprintf(new_commit_log_file, "%s\n", commit_ID);
+        fprintf(all_logs_2, "The commit ID is: %s\n", commit_ID);
+        fgets(line, 1000, current_commit_log_file);
+        fprintf(new_commit_log_file, "%s\n", argv[2]);
+        fprintf(all_logs_2, "The branch name is: %s\n", argv[2]);
+        fgets(line, 1000, current_commit_log_file);
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        fprintf(new_commit_log_file, "%s\n", line);
+        fprintf(all_logs_2, "The files count of this commit is: %s\n", line);
+        fclose(new_commit_log_file);
+        fprintf(all_logs_2, "-\n");
+        while (fgets(line, 1024, all_logs) != NULL) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            fprintf(all_logs_2, "%s\n", line);
+        }
+        fclose(all_logs);
+        fclose(all_logs_2);
+        remove(path_maker(find_source(), ".kiwit/commits/all_logs"));
+        rename(path_maker(find_source(), ".kiwit/commits/all_logs_2"),
+               path_maker(find_source(), ".kiwit/commits/all_logs"));
+        //
+
         printf(_SGR_GREENF "The branch has been created successfully.\n"_SGR_RESET);
     }
 }
 
 int run_checkout(int argc, char *const argv[]) {
+    char *dest_branch_name = malloc(2000);
+    strcpy(dest_branch_name, argv[2]);
+    dest_branch_name[strlen(dest_branch_name)] = '\0';
+    FILE *branches = fopen(path_maker(find_source(), ".kiwit/all_branch_names"), "r");
+    char *line = malloc(1000);
+    bool branch_exist = false;
+    while (fgets(line, 1000, branches) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        if (strcmp(line, dest_branch_name) == 0) {
+            branch_exist = true;
+            break;
+        }
+    }
+    fclose(branches);
+    if (!branch_exist) {
+        printf(_SGR_REDF "This branch is not exist.\n"_SGR_RESET);
+        return 1;
+    }
+    char *source_branch_name = malloc(2000);
+    FILE *current_branch = fopen(path_maker(find_source(), ".kiwit/current_branch"), "r");
+    fgets(source_branch_name, 1000, current_branch);
+    if (source_branch_name[strlen(source_branch_name) - 1] == '\n') {
+        source_branch_name[strlen(source_branch_name) - 1] = '\0';
+    }
+    fclose(current_branch);
+    source_branch_name = file_name_maker(source_branch_name);
+    printf("%s\n", dest_branch_name);
+
 }
 
 int main(int argc, const char *argv[]) {
@@ -1985,3 +2139,8 @@ int main(int argc, const char *argv[]) {
     }
     return 0;
 }
+
+
+
+
+
