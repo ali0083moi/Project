@@ -30,6 +30,13 @@ char *get_relative_path(char *absolute_path, char *base_path) {
     return NULL;
 }
 
+void truncate_path(char *path) {
+    char *last_slash = strrchr(path, '/');
+    if (last_slash != NULL) {
+        *last_slash = '\0';
+    }
+}
+
 char *file_name_maker(char *line) {
     char *file_name = malloc(2000);
     strcpy(file_name, line);
@@ -1325,22 +1332,23 @@ int run_commit(int argc, char *const argv[]) {
         char *line1 = malloc(1025);
         char *line2 = malloc(1025);
         int flag2 = 0;
-        while (fgets(line1, 1024, file1) != NULL) {
-            if (line1[strlen(line1) - 1] == '\n') {
-                line1[strlen(line1) - 1] = '\0';
+        while (fgets(line2, 1024, file2) != NULL) {
+            if (line2[strlen(line2) - 1] == '\n') {
+                line2[strlen(line2) - 1] = '\0';
             }
             flag2 = 0;
-            while (fgets(line2, 1024, file2) != NULL) {
-                if (line2[strlen(line2) - 1] == '\n') {
-                    line2[strlen(line2) - 1] = '\0';
+            while (fgets(line1, 1024, file1) != NULL) {
+                if (line1[strlen(line1) - 1] == '\n') {
+                    line1[strlen(line1) - 1] = '\0';
                 }
                 if (strcmp(line1, line2) == 0) {
                     flag2 = 1;
                     break;
                 }
             }
+            rewind(file1);
             if (flag2 == 0) {
-                fprintf(file3, "%s\n", line1);
+                fprintf(file3, "%s\n", line2);
             }
         }
         fclose(file1);
@@ -1397,22 +1405,23 @@ int run_commit(int argc, char *const argv[]) {
         char *line1 = malloc(2000);
         char *line2 = malloc(2000);
         int flag2 = 0;
-        while (fgets(line1, 1024, file1) != NULL) {
-            if (line1[strlen(line1) - 1] == '\n') {
-                line1[strlen(line1) - 1] = '\0';
+        while (fgets(line2, 1024, file2) != NULL) {
+            if (line2[strlen(line2) - 1] == '\n') {
+                line2[strlen(line2) - 1] = '\0';
             }
             flag2 = 0;
-            while (fgets(line2, 1024, file2) != NULL) {
-                if (line2[strlen(line2) - 1] == '\n') {
-                    line2[strlen(line2) - 1] = '\0';
+            while (fgets(line1, 1024, file1) != NULL) {
+                if (line1[strlen(line1) - 1] == '\n') {
+                    line1[strlen(line1) - 1] = '\0';
                 }
                 if (strcmp(line1, line2) == 0) {
                     flag2 = 1;
                     break;
                 }
             }
+            rewind(file1);
             if (flag2 == 0) {
-                fprintf(file3, "%s\n", line1);
+                fprintf(file3, "%s\n", line2);
             }
         }
         fclose(file1);
@@ -2106,6 +2115,10 @@ int run_checkout(int argc, char *const argv[]) {
         }
         fclose(current_branch);
         source_branch_name = file_name_maker(source_branch_name);
+        if (strcmp(source_branch_name, dest_branch_name) == 0) {
+            printf(_SGR_REDF "You are already in this branch.\n"_SGR_RESET);
+            return 1;
+        }
         char *source_branch_address = malloc(2000);
         strcpy(source_branch_address, find_source());
         strcat(source_branch_address, ".kiwit/commits/");
@@ -2204,9 +2217,81 @@ int run_checkout(int argc, char *const argv[]) {
             return 1;
         }
         char *dest_commit_id = malloc(1000);
+        strcpy(dest_commit_id, argv[2]);
+        dest_commit_id[strlen(dest_commit_id)] = '\0';
+        char *dest_commit_address = malloc(2000);
+        char *source_commit_id = malloc(1000);
+        FILE *all_commits_address = fopen(path_maker(find_source(), ".kiwit/commits/all_commits_address"), "r");
+        char *line = malloc(1000);
+        int counter = 1;
+        while (fgets(line, 1000, all_commits_address) != NULL) {
+            if (counter == atoi(dest_commit_id)) {
+                strcpy(dest_commit_address, line);
+                if (dest_commit_address[strlen(dest_commit_address) - 1] == '\n') {
+                    dest_commit_address[strlen(dest_commit_address) - 1] = '\0';
+                }
+                break;
+            }
+            counter++;
+        }
+        fclose(all_commits_address);
 
+        //changing the current branch
+        char *temp = malloc(2000);
+        strcpy(temp, dest_commit_address);
+        truncate_path(temp);
+        printf("%s\n", temp);
+        FILE *current_branch = fopen(path_maker(find_source(), ".kiwit/current_branch"), "w");
+        fprintf(current_branch, "%s\n", temp);
+        fclose(current_branch);
+
+        char *dest_branch_last_commit_data_address = malloc(2000);
+        strcpy(dest_branch_last_commit_data_address, dest_commit_address);
+        strcat(dest_branch_last_commit_data_address, "/data/");
+
+        char source_dir[2024];
+        if (getcwd(source_dir, sizeof(source_dir)) == NULL)
+            return 0;
+        delete_files(source_dir);
+
+        staging_file = fopen(path_maker(dest_branch_last_commit_data_address, "staging"), "r");
+        FILE *staging_file_2 = fopen(path_maker(dest_branch_last_commit_data_address, "staging_2"), "r");
+        char line_2[1024];
+        char *source_dir_slash = malloc(2000);
+        strcpy(source_dir_slash, source_dir);
+        strcat(source_dir_slash, "/");
+        while (fgets(line, 2000, staging_file) != NULL) {
+            fgets(line_2, 2000, staging_file_2);
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            if (line_2[strlen(line_2) - 1] == '\n') {
+                line_2[strlen(line_2) - 1] = '\0';
+            }
+            char *file_name = file_name_maker(line_2);
+
+            char *file_address = malloc(2000);
+            strncpy(file_address, line_2, strlen(line_2) - strlen(file_name));
+            char *relative_path = get_relative_path(file_address, source_dir_slash);
+            char *command = malloc(4000);
+            if (relative_path != NULL) {
+                strcpy(command, "mkdir -p ");
+                strcat(command, relative_path);
+                strcat(command, " > /dev/null 2>&1");
+                system(command);
+            }
+            strcpy(command, "cp ");
+            strcat(command, line);
+            strcat(command, " ");
+            strcat(command, line_2);
+            system(command);
+        }
+
+        fclose(staging_file);
+        fclose(staging_file_2);
+        printf(_SGR_GREENF "The commit ID has been checked out successfully.\n"_SGR_RESET);
+        printf("The commit ID is: %s\n", dest_commit_id);
     }
-
 }
 
 int main(int argc, const char *argv[]) {
