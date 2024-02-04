@@ -1443,6 +1443,16 @@ int run_commit(int argc, char *const argv[]) {
     stage_file = fopen(path_maker(find_source(), ".kiwit/staging_2"), "w");
     fclose(stage_file);
 
+    FILE *unstage_file = fopen(path_maker(find_source(), ".kiwit/unstaging"), "w");
+    fclose(stage_file);
+    unstage_file = fopen(path_maker(find_source(), ".kiwit/unstaging_2"), "w");
+    fclose(stage_file);
+
+    char *unstaging_address = malloc(1025);
+    strcpy(unstaging_address, find_source());
+    strcat(unstaging_address, ".kiwit/unstaging_files");
+    delete_files(unstaging_address);
+
     // commit log
     // first line : the date of the commit in this format: "YYYY-MM-DD HH:MM:SS"
     // second line : the commit message
@@ -2111,7 +2121,6 @@ int run_checkout(int argc, char *const argv[]) {
             printf(_SGR_GREENF "The branch has been checked out successfully.\n"_SGR_RESET);
             printf("The branch name is: %s\n", dest_branch_name);
         } else {
-            printf("The branch is not empty.\n");
             int dest_branch_last_commit_id_int = atoi(dest_branch_last_commit_id_string);
             dest_branch_last_commit_id_int--;
             sprintf(dest_branch_last_commit_id_string, "%d", dest_branch_last_commit_id_int);
@@ -2172,11 +2181,18 @@ int run_checkout(int argc, char *const argv[]) {
             last_commit_id[strlen(last_commit_id) - 1] = '\0';
         }
         fclose(last_unique_commit_id);
-        if (atoi(argv[2]) > (atoi(last_commit_id) - 1)) {
+        if (atoi(argv[2]) > (atoi(last_commit_id) - 1) || atoi(argv[2]) < 1) {
             printf(_SGR_REDF "This commit is not exist.\n"_SGR_RESET);
             return 1;
         }
-
+        FILE *staging_file = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
+        char *staging_line = malloc(1000);
+        if (fgets(staging_line, 1000, staging_file) != NULL) {
+            printf(_SGR_REDF "The staging is not empty.\n"_SGR_RESET);
+            printf("Please commit your changes before checkout.\n");
+            return 1;
+        }
+        char *dest_commit_id = malloc(1000);
 
     }
 
