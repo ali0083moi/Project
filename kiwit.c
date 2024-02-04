@@ -305,6 +305,9 @@ int create_configs(char *username, char *email) {
     file = fopen(".kiwit/commits/all_logs", "w");
     fclose(file);
 
+    file = fopen(".kiwit/commits/all_commits_address", "w");
+    fclose(file);
+
     file = fopen(".kiwit/deleted", "w");
     fclose(file);
 
@@ -1453,6 +1456,11 @@ int run_commit(int argc, char *const argv[]) {
     strcat(unstaging_address, ".kiwit/unstaging_files");
     delete_files(unstaging_address);
 
+
+    FILE *all_commits_address = fopen(path_maker(find_source(), ".kiwit/commits/all_commits_address"), "a");
+    fprintf(all_commits_address, "%s\n", commit_address);
+    fclose(all_commits_address);
+
     // commit log
     // first line : the date of the commit in this format: "YYYY-MM-DD HH:MM:SS"
     // second line : the commit message
@@ -2000,8 +2008,11 @@ int run_branch(int argc, char *const argv[]) {
         fclose(staging_file);
         fclose(new_staging_file);
 
-
-        FILE *new_commit_log_file = fopen(path_maker(new_commit_folder, "data/commit_log"), "w");
+        new_commit_folder[strlen(new_commit_folder) - 1] = '\0';
+        FILE *all_commits_address = fopen(path_maker(find_source(), ".kiwit/commits/all_commits_address"), "a");
+        fprintf(all_commits_address, "%s\n", new_commit_folder);
+        fclose(all_commits_address);
+        FILE *new_commit_log_file = fopen(path_maker(new_commit_folder, "/data/commit_log"), "w");
         FILE *current_commit_log_file = fopen(path_maker(current_data_folder, "commit_log"), "r");
         FILE *all_logs = fopen(path_maker(find_source(), ".kiwit/commits/all_logs"), "r");
         FILE *all_logs_2 = fopen(path_maker(find_source(), ".kiwit/commits/all_logs_2"), "w");
