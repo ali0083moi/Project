@@ -763,6 +763,11 @@ int run_add(int argc, char *const argv[]) {
             last_commit_id_str[strlen(last_commit_id_str) - 1] = '\0';
         }
         fclose(last_commit_id);
+        int last_commit_id_int = atoi(last_commit_id_str);
+        last_commit_id_int--;
+        sprintf(last_commit_id_str, "%d", last_commit_id_int);
+//        printf("%s\n", last_commit_id_str);
+//        printf("%s\n", this_commit_id);
         if (strcmp(this_commit_id, last_commit_id_str) == 0) {
             is_HEAD = true;
         } else {
@@ -1202,6 +1207,9 @@ int run_commit(int argc, char *const argv[]) {
             last_commit_id_str[strlen(last_commit_id_str) - 1] = '\0';
         }
         fclose(last_commit_id);
+        int last_commit_id_int = atoi(last_commit_id_str);
+        last_commit_id_int--;
+        sprintf(last_commit_id_str, "%d", last_commit_id_int);
         if (strcmp(this_commit_id, last_commit_id_str) == 0) {
             is_HEAD = true;
         } else {
