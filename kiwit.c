@@ -298,6 +298,9 @@ int create_configs(char *username, char *email) {
     fprintf(file, "master\n");
     fclose(file);
 
+    file = fopen(".kiwit/checkouted", "w");
+    fclose(file);
+
     file = fopen(".kiwit/commits/master/last_commit_id", "w");
     fprintf(file, "1\n");
     fclose(file);
@@ -318,9 +321,9 @@ int create_configs(char *username, char *email) {
     file = fopen(".kiwit/deleted", "w");
     fclose(file);
 
-    file = fopen(".kiwit/number", "w");
-    fprintf(file, "0\n");
-    fclose(file);
+//    file = fopen(".kiwit/number", "w");
+//    fprintf(file, "0\n");
+//    fclose(file);
 
     copy_file(path_maker(root_path, "root_alias"), ".kiwit/alias");
     logo_print();
@@ -653,7 +656,6 @@ void config_root(int argc, const char *argv[]) {
     }
 }
 
-
 int run_add_file(FILE *output_file) {
     char *line = malloc(2000);
     while (fgets(line, 2000, output_file) != NULL) {
@@ -739,6 +741,41 @@ int run_add(int argc, char *const argv[]) {
         printf(_SGR_REDF"Please enter the depth.\n"_SGR_RESET);
         return 0;
     }
+
+    bool is_HEAD = true;
+    FILE *checkouted = fopen(path_maker(find_source(), ".kiwit/checkouted"), "r");
+    char *line = malloc(1030);
+    fgets(line, 1000, checkouted);
+    if (line == NULL) {
+        is_HEAD = true;
+    } else if (line[strlen(line) - 1] == '\n') {
+        line[strlen(line) - 1] = '\0';
+    }
+    if (line != NULL) {
+        char *this_commit_id = malloc(1000);
+        strcpy(this_commit_id, file_name_maker(line));
+        truncate_path(line);
+        strcat(line, "/last_commit_id");
+        FILE *last_commit_id = fopen(line, "r");
+        char *last_commit_id_str = malloc(1000);
+        fgets(last_commit_id_str, 1000, last_commit_id);
+        if (last_commit_id_str[strlen(last_commit_id_str) - 1] == '\n') {
+            last_commit_id_str[strlen(last_commit_id_str) - 1] = '\0';
+        }
+        fclose(last_commit_id);
+        if (strcmp(this_commit_id, last_commit_id_str) == 0) {
+            is_HEAD = true;
+        } else {
+            is_HEAD = false;
+        }
+    }
+    if (is_HEAD == false) {
+        printf(_SGR_REDF "You are not in the HEAD of the branch.\n"_SGR_RESET);
+        printf(_SGR_REDF "You can not add in this state.\n"_SGR_RESET);
+        printf("please checkout to the HEAD of the branch.\n");
+        return 1;
+    }
+
     for (int i = 2 + is_f; i < argc; ++i) {
         //printf("%s\n", argv[i]);
         char *file_path = find_source();
@@ -1127,7 +1164,6 @@ int run_commit(int argc, char *const argv[]) {
         printf(_SGR_REDF "The commit message should have at most 72 characters\n"_SGR_RESET);
         return 1;
     }
-
     char *commit_message = malloc(1000);
     if (strcmp(argv[2], "-m") == 0) {
         strcpy(commit_message, argv[3]);
@@ -1145,6 +1181,39 @@ int run_commit(int argc, char *const argv[]) {
         }
         fclose(commit_message_shortcuts);
     }
+    bool is_HEAD = true;
+    FILE *checkouted = fopen(path_maker(find_source(), ".kiwit/checkouted"), "r");
+    char *line = malloc(1030);
+    fgets(line, 1000, checkouted);
+    if (line == NULL) {
+        is_HEAD = true;
+    } else if (line[strlen(line) - 1] == '\n') {
+        line[strlen(line) - 1] = '\0';
+    }
+    if (line != NULL) {
+        char *this_commit_id = malloc(1000);
+        strcpy(this_commit_id, file_name_maker(line));
+        truncate_path(line);
+        strcat(line, "/last_commit_id");
+        FILE *last_commit_id = fopen(line, "r");
+        char *last_commit_id_str = malloc(1000);
+        fgets(last_commit_id_str, 1000, last_commit_id);
+        if (last_commit_id_str[strlen(last_commit_id_str) - 1] == '\n') {
+            last_commit_id_str[strlen(last_commit_id_str) - 1] = '\0';
+        }
+        fclose(last_commit_id);
+        if (strcmp(this_commit_id, last_commit_id_str) == 0) {
+            is_HEAD = true;
+        } else {
+            is_HEAD = false;
+        }
+    }
+    if (is_HEAD == false) {
+        printf(_SGR_REDF "You are not in the HEAD of the branch.\n"_SGR_RESET);
+        printf(_SGR_REDF "You can not commit in this state.\n"_SGR_RESET);
+        printf("please checkout to the HEAD of the branch.\n");
+        return 1;
+    }
     char *final_commit_message = malloc(1000);
     for (int k = 0; k < strlen(commit_message); ++k) {
         if (commit_message[k] == '&') {
@@ -1160,7 +1229,6 @@ int run_commit(int argc, char *const argv[]) {
     }
 
     FILE *staged_files_address = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
-    char *line = malloc(1025);
     int flag = 0;
     int file_counter = 0;
     while (fgets(line, 1024, staged_files_address) != NULL) {
@@ -2079,7 +2147,7 @@ int run_branch(int argc, char *const argv[]) {
 }
 
 int run_checkout(int argc, char *const argv[]) {
-    if (atoi(argv[2]) == 0) {
+    if (atoi(argv[2]) == 0 && strcmp(argv[2], "HEAD") != 0) {
         FILE *branches = fopen(path_maker(find_source(), ".kiwit/all_branch_names"), "r");
         char *line = malloc(1000);
         bool branch_exist = false;
@@ -2159,7 +2227,7 @@ int run_checkout(int argc, char *const argv[]) {
                 return 0;
             delete_files(source_dir);
 
-            FILE *staging_file = fopen(path_maker(dest_branch_last_commit_data_address, "staging"), "r");
+            staging_file = fopen(path_maker(dest_branch_last_commit_data_address, "staging"), "r");
             FILE *staging_file_2 = fopen(path_maker(dest_branch_last_commit_data_address, "staging_2"), "r");
             char line_2[1024];
             char *source_dir_slash = malloc(2000);
@@ -2197,6 +2265,87 @@ int run_checkout(int argc, char *const argv[]) {
             printf(_SGR_GREENF "The branch has been checked out successfully.\n"_SGR_RESET);
             printf("The branch name is: %s\n", dest_branch_name);
         }
+    } else if (strcmp(argv[2], "HEAD") == 0) {
+        printf("salam\n");
+        char *current_branch_address = malloc(1000);
+
+        FILE *current_branch_file = fopen(path_maker(find_source(), ".kiwit/current_branch"), "r");
+        fgets(current_branch_address, 1000, current_branch_file);
+        if (current_branch_address[strlen(current_branch_address) - 1] == '\n') {
+            current_branch_address[strlen(current_branch_address) - 1] = '\0';
+        }
+        fclose(current_branch_file);
+        char *last_commit_id = malloc(1000);
+
+        FILE *last_commit_id_file = fopen(path_maker(current_branch_address, "/last_commit_id"), "r");
+        fgets(last_commit_id, 1000, last_commit_id_file);
+        if (last_commit_id[strlen(last_commit_id) - 1] == '\n') {
+            last_commit_id[strlen(last_commit_id) - 1] = '\0';
+        }
+        fclose(last_commit_id_file);
+        int last_commit_id_int = atoi(last_commit_id);
+        last_commit_id_int--;
+        sprintf(last_commit_id, "%d", last_commit_id_int);
+        char *last_commit_address = malloc(2000);
+        strcpy(last_commit_address, current_branch_address);
+        strcat(last_commit_address, "/");
+        strcat(last_commit_address, last_commit_id);
+
+        FILE *checkouted = fopen(path_maker(find_source(), ".kiwit/checkouted"), "w");
+        fprintf(checkouted, "%s\n", last_commit_address);
+        fclose(checkouted);
+
+        char *dest_branch_last_commit_data_address = malloc(2000);
+        strcpy(dest_branch_last_commit_data_address, last_commit_address);
+        strcat(dest_branch_last_commit_data_address, "/data/");
+
+        char source_dir[2024];
+        if (getcwd(source_dir, sizeof(source_dir)) == NULL)
+            return 0;
+        delete_files(source_dir);
+
+
+        FILE *staging_file = fopen(path_maker(dest_branch_last_commit_data_address, "staging"), "r");
+        FILE *staging_file_2 = fopen(path_maker(dest_branch_last_commit_data_address, "staging_2"), "r");
+        char line_2[1024];
+        char *source_dir_slash = malloc(2000);
+        strcpy(source_dir_slash, source_dir);
+        strcat(source_dir_slash, "/");
+        char *line = malloc(2000);
+        while (fgets(line, 2000, staging_file) != NULL) {
+            fgets(line_2, 2000, staging_file_2);
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            if (line_2[strlen(line_2) - 1] == '\n') {
+                line_2[strlen(line_2) - 1] = '\0';
+            }
+            char *file_name = file_name_maker(line_2);
+
+            char *file_address = malloc(2000);
+            strncpy(file_address, line_2, strlen(line_2) - strlen(file_name));
+            char *relative_path = get_relative_path(file_address, source_dir_slash);
+            char *command = malloc(4000);
+            if (relative_path != NULL) {
+                strcpy(command, "mkdir -p ");
+                strcat(command, relative_path);
+                strcat(command, " > /dev/null 2>&1");
+                system(command);
+            }
+            strcpy(command, "cp ");
+            strcat(command, line);
+            strcat(command, " ");
+            strcat(command, line_2);
+            system(command);
+        }
+
+        fclose(staging_file);
+        fclose(staging_file_2);
+
+        printf(_SGR_GREENF "The commit ID has been checked out successfully.\n"_SGR_RESET);
+        printf("Now you are on the HEAD of the current branch.\n");
+
+
     } else {
         FILE *last_unique_commit_id = fopen(path_maker(find_source(), ".kiwit/commit_ID"), "r");
         char *last_commit_id = malloc(1000);
@@ -2289,6 +2438,11 @@ int run_checkout(int argc, char *const argv[]) {
 
         fclose(staging_file);
         fclose(staging_file_2);
+
+        FILE *checkouted = fopen(path_maker(find_source(), ".kiwit/checkouted"), "w");
+        fprintf(checkouted, "%s\n", dest_commit_address);
+        fclose(checkouted);
+
         printf(_SGR_GREENF "The commit ID has been checked out successfully.\n"_SGR_RESET);
         printf("The commit ID is: %s\n", dest_commit_id);
     }
