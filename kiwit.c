@@ -704,6 +704,32 @@ int run_add_file(FILE *output_file) {
             fprintf(staging_file, "%s\n", path_maker(find_source(), copied_file_address));
             fclose(staging_file);
             fclose(staging_file_2);
+            char **all_tracks = (char *) malloc(1000 * sizeof(char *));
+
+            FILE *tracks = fopen(path_maker(find_source(), ".kiwit/tracks"), "r");
+            char *line2 = malloc(1000);
+            int counter = 0;
+            while (fgets(line2, 1000, tracks) != NULL) {
+                if (line2[strlen(line2) - 1] == '\n') {
+                    line2[strlen(line2) - 1] = '\0';
+                }
+                all_tracks[counter] = malloc(1000);
+                strcpy(all_tracks[counter], line2);
+                counter++;
+            }
+            fclose(tracks);
+            tracks = fopen(path_maker(find_source(), ".kiwit/tracks"), "a");
+            int flag = 0;
+            for (int k = 0; k < counter; ++k) {
+                if (strcmp(all_tracks[k], file_path) == 0) {
+                    flag = 1;
+                    break;
+                }
+            }
+            if (flag == 0) {
+                fprintf(tracks, "%s\n", file_path);
+            }
+            fclose(tracks);
             printf(_SGR_GREENF "%s successfully added.\n", file_name);
             printf(_SGR_RESET);
         }
@@ -750,8 +776,6 @@ int run_add(int argc, char *const argv[]) {
         is_HEAD = true;
     } else if (line[strlen(line) - 1] == '\n') {
         line[strlen(line) - 1] = '\0';
-    }
-    if (line != NULL) {
         char *this_commit_id = malloc(1000);
         strcpy(this_commit_id, file_name_maker(line));
         truncate_path(line);
@@ -766,8 +790,6 @@ int run_add(int argc, char *const argv[]) {
         int last_commit_id_int = atoi(last_commit_id_str);
         last_commit_id_int--;
         sprintf(last_commit_id_str, "%d", last_commit_id_int);
-//        printf("%s\n", last_commit_id_str);
-//        printf("%s\n", this_commit_id);
         if (strcmp(this_commit_id, last_commit_id_str) == 0) {
             is_HEAD = true;
         } else {
@@ -820,6 +842,31 @@ int run_add(int argc, char *const argv[]) {
                 fprintf(staging_file, "%s\n", path_maker(find_source(), copied_file_address));
                 fclose(staging_file);
                 fclose(staging_file_2);
+                char **all_tracks = malloc(2000);
+                FILE *tracks = fopen(path_maker(find_source(), ".kiwit/tracks"), "r");
+                char *line2 = malloc(1000);
+                int counter = 0;
+                while (fgets(line2, 1000, tracks) != NULL) {
+                    if (line2[strlen(line2) - 1] == '\n') {
+                        line2[strlen(line2) - 1] = '\0';
+                    }
+                    all_tracks[counter] = malloc(1000);
+                    strcpy(all_tracks[counter], line2);
+                    counter++;
+                }
+                fclose(tracks);
+                tracks = fopen(path_maker(find_source(), ".kiwit/tracks"), "a");
+                int flag = 0;
+                for (int j = 0; j < counter; ++j) {
+                    if (strcmp(all_tracks[j], file_path) == 0) {
+                        flag = 1;
+                        break;
+                    }
+                }
+                if (flag == 0) {
+                    fprintf(tracks, "%s\n", file_path);
+                }
+                fclose(tracks);
                 printf(_SGR_GREENF "%s successfully added.\n", argv[i]);
                 printf(_SGR_RESET);
             }
@@ -1194,8 +1241,6 @@ int run_commit(int argc, char *const argv[]) {
         is_HEAD = true;
     } else if (line[strlen(line) - 1] == '\n') {
         line[strlen(line) - 1] = '\0';
-    }
-    if (line != NULL) {
         char *this_commit_id = malloc(1000);
         strcpy(this_commit_id, file_name_maker(line));
         truncate_path(line);
@@ -2456,6 +2501,206 @@ int run_checkout(int argc, char *const argv[]) {
     }
 }
 
+void writeFilePathsToFile(const char *dirPath, FILE *outputFile) {
+    DIR *directory = opendir(dirPath);
+    if (directory == NULL) {
+        printf("Cannot open directory '%s'\n", dirPath);
+        return;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(directory)) != NULL) {
+        if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 ||
+            strcmp(entry->d_name, ".kiwit") == 0 || strcmp(entry->d_name, ".DS_Store") == 0)
+            continue;
+
+        char filePath[1024];
+        snprintf(filePath, sizeof(filePath), "%s/%s", dirPath, entry->d_name);
+
+        struct stat sb;
+        if (stat(filePath, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+            writeFilePathsToFile(filePath, outputFile);
+        } else {
+            fprintf(outputFile, "%s\n", filePath);
+        }
+    }
+
+    closedir(directory);
+}
+
+int run_status(int argc, char *const argv[]) {
+    FILE *outputFile = fopen(path_maker(find_source(), ".kiwit/temp_file.txt"), "w");
+    if (outputFile == NULL) {
+        printf("Cannot open output file\n");
+        return 1;
+    }
+    writeFilePathsToFile("/Users/ali/Documents/Daaneshgah/test-kiwit-2", outputFile);
+    fclose(outputFile);
+    FILE *commit_addresses = fopen(path_maker(find_source(), ".kiwit/commits/all_commits_address"), "r");
+    char *line = malloc(1000);
+    char *last_commit_address = malloc(1000);
+    while (fgets(line, 1000, commit_addresses) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        strcpy(last_commit_address, line);
+    }
+    fclose(commit_addresses);
+    char **file_names_and_state = malloc(1000 * sizeof(char *));
+    FILE *all_files = fopen(path_maker(find_source(), ".kiwit/temp_file.txt"), "r");
+    FILE *staging_2 = fopen(path_maker(find_source(), ".kiwit/staging_2"), "r");
+    char *line_2 = malloc(1000);
+    int counter = 0;
+    int flag = 0;
+    while (fgets(line, 1000, all_files) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        flag = 0;
+        file_names_and_state[counter] = malloc(1000);
+        while (fgets(line_2, 1000, staging_2) != NULL) {
+            if (line_2[strlen(line_2) - 1] == '\n') {
+                line_2[strlen(line_2) - 1] = '\0';
+            }
+            if (strcmp(line, line_2) == 0) {
+
+                strcpy(file_names_and_state[counter], file_name_maker(line));
+                strcat(file_names_and_state[counter], " +");
+                flag = 1;
+                break;
+            }
+        }
+        rewind(staging_2);
+        if (flag == 0) {
+            strcpy(file_names_and_state[counter], file_name_maker(line));
+            strcat(file_names_and_state[counter], " -");
+        }
+        counter++;
+    }
+    fclose(all_files);
+    fclose(staging_2);
+
+    all_files = fopen(path_maker(find_source(), ".kiwit/temp_file.txt"), "r");
+    staging_2 = fopen(path_maker(find_source(), ".kiwit/staging_2"), "r");
+    FILE *last_commit_files = fopen(path_maker(last_commit_address, "/data/staging_2"), "r");
+    char *line_3 = malloc(1000);
+    int counter_2 = 0;
+    int flag_2 = 0;
+    while (fgets(line, 1000, all_files) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        flag_2 = 0;
+        flag = 0;
+        while (fgets(line_3, 1000, last_commit_files) != NULL) {
+            if (line_3[strlen(line_3) - 1] == '\n') {
+                line_3[strlen(line_3) - 1] = '\0';
+            }
+            fgets(line_2, 1000, staging_2);
+            if (line_2[strlen(line_2) - 1] == '\n') {
+                line_2[strlen(line_2) - 1] = '\0';
+            }
+            if (strcmp(line, line_2) == 0) {
+                flag = 1;
+            }
+            if (strcmp(line, line_3) == 0) {
+                flag_2 = 1;
+                break;
+            }
+        }
+        rewind(last_commit_files);
+        rewind(staging_2);
+        if (flag_2 == 0) {
+            if (flag == 1) {
+                strcat(file_names_and_state[counter_2], " M");
+            } else {
+                strcat(file_names_and_state[counter_2], " Not Tracked*");
+            }
+        }
+        counter_2++;
+    }
+    fclose(all_files);
+    fclose(staging_2);
+    fclose(last_commit_files);
+
+    all_files = fopen(path_maker(find_source(), ".kiwit/temp_file.txt"), "r");
+    FILE *trackes = fopen(path_maker(find_source(), ".kiwit/tracks"), "r");
+    int counter_3 = 0;
+    while (fgets(line, 1000, trackes) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        flag = 0;
+        while (fgets(line_2, 1000, all_files) != NULL) {
+            if (line_2[strlen(line_2) - 1] == '\n') {
+                line_2[strlen(line_2) - 1] = '\0';
+            }
+            if (strcmp(line, line_2) == 0) {
+                flag = 1;
+                break;
+            }
+        }
+        rewind(all_files);
+        if (flag == 0) {
+            file_names_and_state[counter] = malloc(1000);
+            strcpy(file_names_and_state[counter], file_name_maker(line));
+            strcat(file_names_and_state[counter], " -");
+            strcat(file_names_and_state[counter], " D");
+            counter++;
+        }
+        counter_3++;
+    }
+    fclose(all_files);
+    fclose(trackes);
+    all_files = fopen(path_maker(find_source(), ".kiwit/temp_file.txt"), "r");
+    staging_2 = fopen(path_maker(find_source(), ".kiwit/staging_2"), "r");
+    last_commit_files = fopen(path_maker(last_commit_address, "/data/staging_2"), "r");
+    FILE *last_commit_files_2 = fopen(path_maker(last_commit_address, "/data/staging"), "r");
+    counter_2 = 0;
+    FILE *file1;
+    FILE *file2;
+    while (fgets(line, 1000, all_files) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        flag = 0;
+        while (fgets(line_2, 1000, last_commit_files) != NULL) {
+            if (line_2[strlen(line_2) - 1] == '\n') {
+                line_2[strlen(line_2) - 1] = '\0';
+            }
+            fgets(line_3, 1000, last_commit_files_2);
+            if (line_3[strlen(line_3) - 1] == '\n') {
+                line_3[strlen(line_3) - 1] = '\0';
+            }
+            if (strcmp(line, line_2) == 0) {
+                flag = 1;
+                break;
+            }
+        }
+        rewind(last_commit_files);
+        rewind(last_commit_files_2);
+        if (flag == 1) {
+            file1 = fopen(line, "r");
+            file2 = fopen(line_3, "r");
+            int is_same = file_content_checker(file1, file2);
+            fclose(file1);
+            fclose(file2);
+            if (is_same == 0) {
+                strcat(file_names_and_state[counter_2], " M");
+            } else {
+                strcat(file_names_and_state[counter_2], " A");
+            }
+        }
+        counter_2++;
+    }
+    fclose(all_files);
+    fclose(staging_2);
+    fclose(last_commit_files);
+    for (int i = 0; i < counter; i++) {
+        printf("%s\n", file_names_and_state[i]);
+    }
+}
+
 int main(int argc, const char *argv[]) {
     if (argc < 2) {
         printf("Usage : %s command\n", argv[0]);
@@ -2545,6 +2790,8 @@ int main(int argc, const char *argv[]) {
         return run_branch(argc, argv);
     } else if (strcmp(command, "checkout") == 0 && argc == 3) {
         return run_checkout(argc, argv);
+    } else if (strcmp(command, "status") == 0 && argc == 2) {
+        return run_status(argc, argv);
     } else {
         printf(_SGR_REDB "invalid command\n"_SGR_RESET);
     }
