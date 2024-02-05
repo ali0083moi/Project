@@ -10,4 +10,5 @@ remove
 log
 branch
 checkout
+revert
 --start asghar
