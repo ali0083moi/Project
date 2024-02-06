@@ -3906,8 +3906,7 @@ int run_grep(int argc, const char *argv[]) {
             lineNumber++;
         }
     }
-    return 1;
-    if (strcmp(argv[6], "-n") == 0 && argc == 7) {
+    else if (strcmp(argv[6], "-n") == 0 && argc == 7) {
         while (fgets(line, sizeof(line), file) != NULL) {
             if (strstr(line, word) != NULL) {
                 //printf("%d: %s", lineNumber, line);
