@@ -3739,6 +3739,7 @@ int static_error_check(char *file_path) {
 //        return 1;
 //    }
 //}
+//
 
 int run_pre_commit(int argc, const char *argv[]) {
     if (argc < 2) {
