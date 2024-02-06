@@ -12,4 +12,5 @@ branch
 checkout
 revert
 tag
+pre-commit
 --start asghar

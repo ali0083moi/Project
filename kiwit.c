@@ -308,6 +308,17 @@ int create_configs(char *username, char *email) {
     file = fopen(".kiwit/commit_message_shortcuts", "w");
     fclose(file);
 
+    file = fopen(".kiwit/all_hooks", "w");
+    fprintf(file, "todo-check\neof-blank-space\nformat-check\nbalance-braces\nfile-size-check\ncharacter-limit\n");
+    fclose(file);
+
+    file = fopen(".kiwit/applied_hooks", "w");
+    fclose(file);
+
+    file = fopen(".kiwit/formats", "w");
+    fprintf(file, ".txt\n.c\n.cpp\n.mp4\n.wav\n.mp3\n.php\n");
+    fclose(file);
+
     file = fopen(".kiwit/current_branch", "w");
     fprintf(file, path_maker(find_source(), ".kiwit/commits/master"));
     fclose(file);
@@ -3499,6 +3510,350 @@ int run_tag(int argc, char *const argv[]) {
     }
 }
 
+int todo_check(char *file_path) {
+    FILE *formats = fopen(path_maker(find_source(), ".kiwit/formats"), "r");
+    int flag = 0;
+    char *format = malloc(1000);
+    while (fgets(format, 1000, formats) != NULL) {
+        if (format[strlen(format) - 1] == '\n') {
+            format[strlen(format) - 1] = '\0';
+        }
+        if (strcmp(format, ".c") == 0 || strcmp(format, ".cpp") == 0 || strcmp(format, ".txt") == 0) {
+            if (strstr(file_path, format) != NULL) {
+                flag = 1;
+                break;
+            }
+        }
+    }
+    if (flag == 0) {
+        return 2;
+    }
+    FILE *file = fopen(file_path, "r");
+    char *line = malloc(1000);
+    while (fgets(line, 1000, file) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        if (strstr(line, "TODO") != NULL) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int eof_blank_space(char *file_path) {
+    FILE *formats = fopen(path_maker(find_source(), ".kiwit/formats"), "r");
+    int flag = 0;
+    char *format = malloc(1000);
+    while (fgets(format, 1000, formats) != NULL) {
+        if (format[strlen(format) - 1] == '\n') {
+            format[strlen(format) - 1] = '\0';
+        }
+
+        if (strcmp(format, ".c") == 0 || strcmp(format, ".cpp") == 0 || strcmp(format, ".txt") == 0) {
+            if (strstr(file_path, format) != NULL) {
+                flag = 1;
+                break;
+            }
+        }
+    }
+    if (flag == 0) {
+        return 2;
+    }
+    FILE *file = fopen(file_path, "r");
+    fseek(file, -1, SEEK_END);
+    char lastChar = fgetc(file);
+    fclose(file);
+    if (lastChar == ' ' || lastChar == '\n' || lastChar == '\t') {
+        return 0;
+    }
+    return 1;
+}
+
+int format_check(char *file_path) {
+    FILE *formats = fopen(path_maker(find_source(), ".kiwit/formats"), "r");
+    int flag = 0;
+    char *format = malloc(1000);
+    while (fgets(format, 1000, formats) != NULL) {
+        if (format[strlen(format) - 1] == '\n') {
+            format[strlen(format) - 1] = '\0';
+        }
+        if (strstr(file_path, format) != NULL) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+int balance_braces(char *file_path) {
+    FILE *formats = fopen(path_maker(find_source(), ".kiwit/formats"), "r");
+    int flag = 0;
+    char *format = malloc(1000);
+    while (fgets(format, 1000, formats) != NULL) {
+        if (format[strlen(format) - 1] == '\n') {
+            format[strlen(format) - 1] = '\0';
+        }
+
+        if (strcmp(format, ".c") == 0 || strcmp(format, ".cpp") == 0 || strcmp(format, ".txt") == 0) {
+            if (strstr(file_path, format) != NULL) {
+                flag = 1;
+                break;
+            }
+        }
+    }
+    if (flag == 0) {
+        return 2;
+    }
+    FILE *file = fopen(file_path, "r");
+    int counterb1o = 0;
+    int counterb1c = 0;
+    int counterb2o = 0;
+    int counterb2c = 0;
+    int counterb3o = 0;
+    int counterb3c = 0;
+    char *line = malloc(1000);
+    while (fgets(line, 1000, file) != NULL) {
+        if (line[strlen(line) - 1] == '\n') {
+            line[strlen(line) - 1] = '\0';
+        }
+        for (int i = 0; i < strlen(line); ++i) {
+            if (line[i] == '{') {
+                counterb1o++;
+            }
+            if (line[i] == '}') {
+                counterb1c++;
+            }
+            if (line[i] == '(') {
+                counterb2o++;
+            }
+            if (line[i] == ')') {
+                counterb2c++;
+            }
+            if (line[i] == '[') {
+                counterb3o++;
+            }
+            if (line[i] == ']') {
+                counterb3c++;
+            }
+        }
+    }
+    fclose(file);
+    if (counterb1o != counterb1c || counterb2o != counterb2c || counterb3o != counterb3c) {
+        return 0;
+    }
+    return 1;
+}
+
+int file_size_check(char *file_path) {
+    struct stat st;
+    if (stat(file_path, &st) != 0) {
+        return -1; // Error occurred, could not get file size
+    }
+    long int file_size = st.st_size;
+    if (file_size > 5120000) {
+        return 0;
+    }
+    return 1;
+}
+
+int character_limit(char *file_path) {
+    FILE *formats = fopen(path_maker(find_source(), ".kiwit/formats"), "r");
+    int flag = 0;
+    char *format = malloc(1000);
+    while (fgets(format, 1000, formats) != NULL) {
+        if (format[strlen(format) - 1] == '\n') {
+            format[strlen(format) - 1] = '\0';
+        }
+
+        if (strcmp(format, ".c") == 0 || strcmp(format, ".cpp") == 0 || strcmp(format, ".txt") == 0) {
+            if (strstr(file_path, format) != NULL) {
+                flag = 1;
+                break;
+            }
+        }
+    }
+    if (flag == 0) {
+        return 2;
+    }
+    FILE *file = fopen(file_path, "r");
+    int counter = 0;
+    char *line = malloc(1000);
+    while (fgets(line, 1000, file) != NULL) {
+        counter += strlen(line);
+    }
+    fclose(file);
+    if (counter > 20000) {
+        return 0;
+    }
+    return 1;
+}
+
+int run_pre_commit(int argc, const char *argv[]) {
+    if (argc < 2) {
+        printf(_SGR_REDF "invalid command\n"_SGR_RESET);
+        return 1;
+    }
+    if (argc == 4 && strcmp(argv[2], "hooks") == 0 && strcmp(argv[3], "list") == 0) {
+        FILE *all_hooks = fopen(path_maker(find_source(), ".kiwit/all_hooks"), "r");
+        char *line = malloc(1000);
+        while (fgets(line, 1000, all_hooks) != NULL) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            printf("%s\n", line);
+        }
+        fclose(all_hooks);
+        return 1;
+    }
+    if (argc == 4 && strcmp(argv[2], "applied") == 0 && strcmp(argv[3], "hooks") == 0) {
+        FILE *applied_hooks = fopen(path_maker(find_source(), ".kiwit/applied_hooks"), "r");
+        char *line = malloc(1000);
+        while (fgets(line, 1000, applied_hooks) != NULL) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            printf("%s\n", line);
+        }
+        fclose(applied_hooks);
+        return 1;
+    }
+    if (argc == 5 && strcmp(argv[2], "add") == 0 && strcmp(argv[3], "hook") == 0) {
+        FILE *all_hooks = fopen(path_maker(find_source(), ".kiwit/all_hooks"), "r");
+        char *line = malloc(1000);
+        int flag = 0;
+        while (fgets(line, 1000, all_hooks) != NULL) {
+            if (strstr(line, argv[4]) != NULL) {
+                flag = 1;
+                break;
+            }
+        }
+        fclose(all_hooks);
+        if (flag == 0) {
+            printf(_SGR_REDF "This hook ID is not valied.\n"_SGR_RESET);
+            return 1;
+        }
+        FILE *applied_hooks = fopen(path_maker(find_source(), ".kiwit/applied_hooks"), "r");
+        while (fgets(line, 1000, applied_hooks) != NULL) {
+            if (strstr(line, argv[4]) != NULL) {
+                printf(_SGR_REDF "This hook is already exist.\n"_SGR_RESET);
+                return 1;
+            }
+        }
+        fclose(applied_hooks);
+        applied_hooks = fopen(path_maker(find_source(), ".kiwit/applied_hooks"), "a");
+        fprintf(applied_hooks, "%s\n", argv[4]);
+        fclose(applied_hooks);
+        printf(_SGR_GREENF "The hook has been added successfully.\n"_SGR_RESET);
+        return 1;
+    }
+    if (argc == 5 && strcmp(argv[2], "remove") == 0 && strcmp(argv[3], "hook") == 0) {
+        FILE *applied_hooks = fopen(path_maker(find_source(), ".kiwit/applied_hooks"), "r");
+        char *line = malloc(1000);
+        int flag = 0;
+        while (fgets(line, 1000, applied_hooks) != NULL) {
+            if (strstr(line, argv[4]) != NULL) {
+                flag = 1;
+                break;
+            }
+        }
+        fclose(applied_hooks);
+        if (flag == 0) {
+            printf(_SGR_REDF "This hook ID is not added before.\n"_SGR_RESET);
+            return 1;
+        }
+        applied_hooks = fopen(path_maker(find_source(), ".kiwit/applied_hooks"), "r");
+        FILE *applied_hooks_2 = fopen(path_maker(find_source(), ".kiwit/applied_hooks_2"), "w");
+        while (fgets(line, 1000, applied_hooks) != NULL) {
+            if (strstr(line, argv[4]) == NULL) {
+                fprintf(applied_hooks_2, "%s", line);
+            }
+        }
+        fclose(applied_hooks);
+        fclose(applied_hooks_2);
+        remove(path_maker(find_source(), ".kiwit/applied_hooks"));
+        rename(path_maker(find_source(), ".kiwit/applied_hooks_2"),
+               path_maker(find_source(), ".kiwit/applied_hooks"));
+        printf(_SGR_GREENF "The hook has been removed successfully.\n"_SGR_RESET);
+        return 1;
+    }
+    if (argc == 2) {
+        FILE *applied_hooks = fopen(path_maker(find_source(), ".kiwit/applied_hooks"), "r");
+        char *line = malloc(1000);
+        FILE *stage = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
+        char *file_path = malloc(2000);
+        char *file_name = malloc(1000);
+        while (fgets(file_path, 1000, stage) != NULL) {
+            if (file_path[strlen(file_path) - 1] == '\n') {
+                file_path[strlen(file_path) - 1] = '\0';
+            }
+            strcpy(file_name, file_name_maker(file_path));
+            printf(_C_L_PURPLE"%s:\n"_SGR_RESET, file_name);
+            rewind(applied_hooks);
+            while (fgets(line, 1000, applied_hooks) != NULL) {
+                if (line[strlen(line) - 1] == '\n') {
+                    line[strlen(line) - 1] = '\0';
+                }
+                if (strcmp(line, "todo-check") == 0) {
+                    int checker = todo_check(file_path);
+                    if (checker == 0) {
+                        printf(_SGR_REDF "%s....................FAILED\n"_SGR_RESET, line);
+                    } else if (checker == 1) {
+                        printf(_SGR_GREENF "%s....................PASSED\n"_SGR_RESET, line);
+                    } else if (checker == 2) {
+                        printf(_SGR_YELLOWF "%s....................SKIPPED\n"_SGR_RESET, line);
+                    }
+                }
+                if (strcmp(line, "eof-blank-space") == 0) {
+                    int checker = eof_blank_space(file_path);
+                    if (checker == 0) {
+                        printf(_SGR_REDF "%s...............FAILED\n"_SGR_RESET, line);
+                    } else if (checker == 1) {
+                        printf(_SGR_GREENF "%s...............PASSED\n"_SGR_RESET, line);
+                    } else if (checker == 2) {
+                        printf(_SGR_YELLOWF "%s...............SKIPPED\n"_SGR_RESET, line);
+                    }
+                }
+                if (strcmp(line, "format-check") == 0) {
+                    int checker = format_check(file_path);
+                    if (checker == 0) {
+                        printf(_SGR_REDF "%s..................FAILED\n"_SGR_RESET, line);
+                    } else if (checker == 1) {
+                        printf(_SGR_GREENF "%s..................PASSED\n"_SGR_RESET, line);
+                    }
+                }
+                if (strcmp(line, "balance-braces") == 0) {
+                    int checker = balance_braces(file_path);
+                    if (checker == 0) {
+                        printf(_SGR_REDF "%s................FAILED\n"_SGR_RESET, line);
+                    } else if (checker == 1) {
+                        printf(_SGR_GREENF "%s................PASSED\n"_SGR_RESET, line);
+                    } else if (checker == 2) {
+                        printf(_SGR_YELLOWF "%s................SKIPPED\n"_SGR_RESET, line);
+                    }
+                }
+                if (strcmp(line, "file-size-check") == 0) {
+                    int checker = file_size_check(file_path);
+                    if (checker == 0) {
+                        printf(_SGR_REDF "%s...............FAILED\n"_SGR_RESET, line);
+                    } else if (checker == 1) {
+                        printf(_SGR_GREENF "%s...............PASSED\n"_SGR_RESET, line);
+                    }
+                }
+                if (strcmp(line, "character-limit") == 0) {
+                    int checker = character_limit(file_path);
+                    if (checker == 0) {
+                        printf(_SGR_REDF "%s...............FAILED\n"_SGR_RESET, line);
+                    } else if (checker == 1) {
+                        printf(_SGR_GREENF "%s...............PASSED\n"_SGR_RESET, line);
+                    } else if (checker == 2) {
+                        printf(_SGR_YELLOWF "%s...............SKIPPED\n"_SGR_RESET, line);
+                    }
+                }
+            }
+        }
+
+    }
+}
 
 int main(int argc, const char *argv[]) {
     if (argc < 2) {
@@ -3595,6 +3950,8 @@ int main(int argc, const char *argv[]) {
         return run_revert(argc, argv);
     } else if (strcmp(command, "tag") == 0 && argc >= 2) {
         return run_tag(argc, argv);
+    } else if (strcmp(command, "pre-commit") == 0) {
+        return run_pre_commit(argc, argv);
     } else {
         printf(_SGR_REDB "invalid command\n"_SGR_RESET);
     }
