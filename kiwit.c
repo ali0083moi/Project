@@ -2716,6 +2716,158 @@ int run_status(int argc, char *const argv[]) {
 
 int run_revert(int argc, char *const argv[]) {
     if (argc == 3) {
+        if (strstr(argv[2], "HEAD") != NULL) {
+            char *number = malloc(1000);
+            sscanf(number, "HEAD-%s", argv[4]);
+            int number_int = atoi(number);
+            FILE *last_unique_commit_id = fopen(path_maker(find_source(), ".kiwit/commit_ID"), "r");
+            char *last_commit_id = malloc(1000);
+            fgets(last_commit_id, 1000, last_unique_commit_id);
+            if (last_commit_id[strlen(last_commit_id) - 1] == '\n') {
+                last_commit_id[strlen(last_commit_id) - 1] = '\0';
+            }
+            fclose(last_unique_commit_id);
+            int final_commit_id = atoi(last_commit_id) - number_int;
+            char *final_commit_id_string = malloc(1000);
+            sprintf(final_commit_id_string, "%d", final_commit_id);
+            char *command = malloc(2000);
+            strcpy(command, "kiwit ");
+            strcat(command, "revert ");
+            strcat(command, final_commit_id_string);
+            strcat(command, " > /dev/null 2>&1");
+            system(command);
+            printf(_SGR_GREENF "The revert has been done successfully.\n"_SGR_RESET);
+        } else {
+            char *commit_id = malloc(1000);
+            strcpy(commit_id, argv[2]);
+            commit_id[strlen(commit_id)] = '\0';
+            int commit_id_int = atoi(commit_id);
+            FILE *last_unique_commit_id = fopen(path_maker(find_source(), ".kiwit/commit_ID"), "r");
+            char *last_commit_id = malloc(1000);
+            fgets(last_commit_id, 1000, last_unique_commit_id);
+            if (last_commit_id[strlen(last_commit_id) - 1] == '\n') {
+                last_commit_id[strlen(last_commit_id) - 1] = '\0';
+            }
+            fclose(last_unique_commit_id);
+            if (commit_id_int > (atoi(last_commit_id) - 1) || commit_id_int < 1) {
+                printf(_SGR_REDF "This commit is not exist.\n"_SGR_RESET);
+                return 1;
+            }
+            FILE *staging_file = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
+            char *staging_line = malloc(1000);
+            if (fgets(staging_line, 1000, staging_file) != NULL) {
+                printf(_SGR_REDF "The staging is not empty.\n"_SGR_RESET);
+                printf("Please commit your changes before revert.\n");
+                return 1;
+            }
+            char *command = malloc(2000);
+            strcpy(command, "kiwit ");
+            strcat(command, "checkout ");
+            strcat(command, commit_id);
+            strcat(command, " > /dev/null 2>&1");
+            system(command);
+            strcpy(command, "kiwit ");
+            strcat(command, "add *");
+            strcat(command, " > /dev/null 2>&1");
+            system(command);
+            strcpy(command, "kiwit ");
+            strcat(command, "checkout HEAD");
+            strcat(command, " > /dev/null 2>&1");
+            system(command);
+            strcpy(command, "kiwit ");
+            strcat(command, "commit -m \"Revert to commit ");
+            strcat(command, commit_id);
+            strcat(command, "\"");
+            strcat(command, " > /dev/null 2>&1");
+            system(command);
+            printf(_SGR_GREENF "The revert has been done successfully.\n"_SGR_RESET);
+        }
+    } else if (argc == 5) {
+        if (strcmp(argv[2], "-m") != 0) {
+            printf(_SGR_REDF "invalid command\n"_SGR_RESET);
+            return 1;
+        }
+        if (strstr(argv[4], "HEAD") != NULL) {
+            printf("ssdsadsdasd\n");
+            char *number = malloc(1000);
+            sscanf(number, "HEAD-%s", argv[4]);
+            int number_int = atoi(number);
+            FILE *last_unique_commit_id = fopen(path_maker(find_source(), ".kiwit/commit_ID"), "r");
+            char *last_commit_id = malloc(1000);
+            fgets(last_commit_id, 1000, last_unique_commit_id);
+            if (last_commit_id[strlen(last_commit_id) - 1] == '\n') {
+                last_commit_id[strlen(last_commit_id) - 1] = '\0';
+            }
+            fclose(last_unique_commit_id);
+            int final_commit_id = atoi(last_commit_id) - number_int;
+            char *final_commit_id_string = malloc(1000);
+            sprintf(final_commit_id_string, "%d", final_commit_id);
+            char *commit_message = malloc(1000);
+            strcpy(commit_message, argv[3]);
+            commit_message[strlen(commit_message)] = '\0';
+            char *command = malloc(2000);
+            strcpy(command, "kiwit ");
+            strcat(command, "revert ");
+            strcat(command, "-m ");
+            strcat(command, commit_message);
+            strcat(command, " ");
+            strcat(command, final_commit_id_string);
+            strcat(command, " > /dev/null 2>&1");
+            system(command);
+            printf(_SGR_GREENF "The revert has been done successfully.\n"_SGR_RESET);
+        } else {
+            char *commit_message = malloc(1000);
+            strcpy(commit_message, argv[3]);
+            commit_message[strlen(commit_message)] = '\0';
+            char *commit_id = malloc(1000);
+            strcpy(commit_id, argv[4]);
+            commit_id[strlen(commit_id)] = '\0';
+            int commit_id_int = atoi(commit_id);
+            FILE *last_unique_commit_id = fopen(path_maker(find_source(), ".kiwit/commit_ID"), "r");
+            char *last_commit_id = malloc(1000);
+            fgets(last_commit_id, 1000, last_unique_commit_id);
+            if (last_commit_id[strlen(last_commit_id) - 1] == '\n') {
+                last_commit_id[strlen(last_commit_id) - 1] = '\0';
+            }
+            fclose(last_unique_commit_id);
+            if (commit_id_int > (atoi(last_commit_id) - 1) || commit_id_int < 1) {
+                printf(_SGR_REDF "This commit is not exist.\n"_SGR_RESET);
+                return 1;
+            }
+            FILE *staging_file = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
+            char *staging_line = malloc(1000);
+            if (fgets(staging_line, 1000, staging_file) != NULL) {
+                printf(_SGR_REDF "The staging is not empty.\n"_SGR_RESET);
+                printf("Please commit your changes before revert.\n");
+                return 1;
+            }
+            char *command = malloc(2000);
+            strcpy(command, "kiwit ");
+            strcat(command, "checkout ");
+            strcat(command, commit_id);
+            strcat(command, " > /dev/null 2>&1");
+            system(command);
+            strcpy(command, "kiwit ");
+            strcat(command, "add *");
+            strcat(command, " > /dev/null 2>&1");
+            system(command);
+            strcpy(command, "kiwit ");
+            strcat(command, "checkout HEAD");
+            strcat(command, " > /dev/null 2>&1");
+            system(command);
+            strcpy(command, "kiwit ");
+            strcat(command, "commit -m \"");
+            strcat(command, commit_message);
+            strcat(command, "\"");
+            strcat(command, " > /dev/null 2>&1");
+            system(command);
+            printf(_SGR_GREENF "The revert has been done successfully.\n"_SGR_RESET);
+        }
+    } else if (argc == 4) {
+        if (strcmp(argv[2], "-n") != 0) {
+            printf(_SGR_REDF "invalid command\n"_SGR_RESET);
+            return 1;
+        }
         char *commit_id = malloc(1000);
         strcpy(commit_id, argv[2]);
         commit_id[strlen(commit_id)] = '\0';
@@ -2744,72 +2896,10 @@ int run_revert(int argc, char *const argv[]) {
         strcat(command, commit_id);
         strcat(command, " > /dev/null 2>&1");
         system(command);
-        strcpy(command, "kiwit ");
-        strcat(command, "add *");
-        strcat(command, " > /dev/null 2>&1");
-        system(command);
-        strcpy(command, "kiwit ");
-        strcat(command, "checkout HEAD");
-        strcat(command, " > /dev/null 2>&1");
-        system(command);
-        strcpy(command, "kiwit ");
-        strcat(command, "commit -m \"Revert to commit ");
-        strcat(command, commit_id);
-        strcat(command, "\"");
-        strcat(command, " > /dev/null 2>&1");
-        system(command);
         printf(_SGR_GREENF "The revert has been done successfully.\n"_SGR_RESET);
-    } else if (argc == 5) {
-        if (strcmp(argv[2], "-m") != 0) {
-            printf(_SGR_REDF "invalid command\n"_SGR_RESET);
-            return 1;
-        }
-        char *commit_message = malloc(1000);
-        strcpy(commit_message, argv[3]);
-        commit_message[strlen(commit_message)] = '\0';
-        char *commit_id = malloc(1000);
-        strcpy(commit_id, argv[4]);
-        commit_id[strlen(commit_id)] = '\0';
-        int commit_id_int = atoi(commit_id);
-        FILE *last_unique_commit_id = fopen(path_maker(find_source(), ".kiwit/commit_ID"), "r");
-        char *last_commit_id = malloc(1000);
-        fgets(last_commit_id, 1000, last_unique_commit_id);
-        if (last_commit_id[strlen(last_commit_id) - 1] == '\n') {
-            last_commit_id[strlen(last_commit_id) - 1] = '\0';
-        }
-        fclose(last_unique_commit_id);
-        if (commit_id_int > (atoi(last_commit_id) - 1) || commit_id_int < 1) {
-            printf(_SGR_REDF "This commit is not exist.\n"_SGR_RESET);
-            return 1;
-        }
-        FILE *staging_file = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
-        char *staging_line = malloc(1000);
-        if (fgets(staging_line, 1000, staging_file) != NULL) {
-            printf(_SGR_REDF "The staging is not empty.\n"_SGR_RESET);
-            printf("Please commit your changes before revert.\n");
-            return 1;
-        }
-        char *command = malloc(2000);
-        strcpy(command, "kiwit ");
-        strcat(command, "checkout ");
-        strcat(command, commit_id);
-        strcat(command, " > /dev/null 2>&1");
-        system(command);
-        strcpy(command, "kiwit ");
-        strcat(command, "add *");
-        strcat(command, " > /dev/null 2>&1");
-        system(command);
-        strcpy(command, "kiwit ");
-        strcat(command, "checkout HEAD");
-        strcat(command, " > /dev/null 2>&1");
-        system(command);
-        strcpy(command, "kiwit ");
-        strcat(command, "commit -m \"");
-        strcat(command, commit_message);
-        strcat(command, "\"");
-        strcat(command, " > /dev/null 2>&1");
-        system(command);
-        printf(_SGR_GREENF "The revert has been done successfully.\n"_SGR_RESET);
+    } else {
+        printf(_SGR_REDF "invalid command\n"_SGR_RESET);
+        return 1;
     }
 }
 
@@ -2830,7 +2920,7 @@ int run_tag(int argc, char *const argv[]) {
         fclose(tags);
         return 1;
     }
-    if (argc == 4 && strcmp(argv[2], "show") == 0){
+    if (argc == 4 && strcmp(argv[2], "show") == 0) {
         char *line = malloc(1000);
         FILE *all_tags = fopen(path_maker(find_source(), ".kiwit/tags"), "r");
         int counter = 0;
