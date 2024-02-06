@@ -321,6 +321,12 @@ int create_configs(char *username, char *email) {
     file = fopen(".kiwit/deleted", "w");
     fclose(file);
 
+    file = fopen(".kiwit/tag_names", "w");
+    fclose(file);
+
+    file = fopen(".kiwit/tags", "w");
+    fclose(file);
+
 //    file = fopen(".kiwit/number", "w");
 //    fprintf(file, "0\n");
 //    fclose(file);
@@ -921,6 +927,7 @@ int run_reset_file() {
     FILE *tmp = fopen("output.txt", "r");
     FILE *final_output = fopen("output2.txt", "w");
     FILE *staged_files_address2 = fopen(path_maker(find_source(), ".kiwit/staging_2"), "r");
+    rewind(staged_files_address2);
     char *line = malloc(1025);
     char *line2 = malloc(1025);
     int flag = 0;
@@ -974,7 +981,7 @@ int run_reset_file() {
         if (main_line[strlen(main_line) - 1] == '\n') {
             main_line[strlen(main_line) - 1] = '\0';
         }
-        printf("main Line:  %s\n", main_line);
+        //printf("main Line:  %s\n", main_line);
         char *file_name = malloc(2000);
         strcpy(file_name, main_line);
         int i = strlen(file_name), j = 0;
@@ -1010,18 +1017,18 @@ int run_reset_file() {
 
         char *file_address_tmp = malloc(2000);
         strcpy(file_address_tmp, main_line);
+        printf("file_address_tmp: %s\n", file_address_tmp);
         FILE *tmp_output = fopen(path_maker(find_source(), ".kiwit/tmp_output"), "w");
         int flag_file_address_found = 0;
+        rewind(staged_files_address2);
         while (fgets(line, 1024, staged_files_address2) != NULL) {
             if (line[strlen(line) - 1] == '\n') {
                 line[strlen(line) - 1] = '\0';
             }
             if (strcmp(line, file_address_tmp) == 0) {
-                flag_file_address_found = 1;
-                break;
+                continue;
             }
-        }
-        if (flag_file_address_found == 0) {
+            //printf("line: %s\n", line);
             fprintf(tmp_output, "%s\n", line);
         }
         fclose(tmp_output);
@@ -1073,25 +1080,31 @@ int run_reset(int argc, char *const argv[]) {
         int line_counter = 0;
         char *file_path = find_source();
         strcat(file_path, argv[i]);
+        file_path[strlen(file_path)] = '\0';
+        //printf("%s\n", file_path);
         if (is_dir(file_path) == -1) {
             printf(_SGR_REDF "There is no file or directory with this name: " _SGR_RESET);
             printf(_SGR_REDF "%s\n", argv[i]);
             printf(_SGR_RESET);
             //return 1;
         } else if (is_dir(file_path) == 0) {
+            //printf(_C_L_PURPLE"file_path: %s\n"_SGR_RESET, file_path);
             FILE *staged_files_address2 = fopen(path_maker(find_source(), ".kiwit/staging_2"), "r");
+            //         printf("%s\n", path_maker(find_source(), ".kiwit/staging_2"));
             char *line = malloc(1025);
             int flag = 0;
+            rewind(staged_files_address2);
             while (fgets(line, 1000, staged_files_address2) != NULL) {
                 if (line[strlen(line) - 1] == '\n') {
                     line[strlen(line) - 1] = '\0';
                 }
+                line_counter++;
+//                printf(_C_L_PURPLE"line: %s\n"_SGR_RESET, line);
+                //               printf(_C_L_PURPLE"file_path: %s\n"_SGR_RESET, file_path);
                 if (strcmp(line, file_path) == 0) {
                     flag = 1;
-                    line_counter++;
                     break;
                 }
-                line_counter++;
             }
             if (flag == 0) {
                 printf(_SGR_REDF "%s is not staged before.\n", argv[i]);
@@ -1099,7 +1112,6 @@ int run_reset(int argc, char *const argv[]) {
             }
             fclose(staged_files_address2);
             FILE *staged_files_address1 = fopen(path_maker(find_source(), ".kiwit/staging"), "r");
-            staged_files_address2 = fopen(path_maker(find_source(), ".kiwit/staging_2"), "r");
             //printf("%s\n", line);
             char copied_file_address[2000];
             strcpy(copied_file_address, ".kiwit/staging_files/");
@@ -1127,6 +1139,7 @@ int run_reset(int argc, char *const argv[]) {
             char *file_address_tmp = malloc(2000);
             strcpy(file_address_tmp, line);
             FILE *tmp_output = fopen(path_maker(find_source(), ".kiwit/tmp_output"), "w");
+            staged_files_address2 = fopen(path_maker(find_source(), ".kiwit/staging_2"), "r");
             while (fgets(line, 1024, staged_files_address2) != NULL) {
                 if (line[strlen(line) - 1] == '\n') {
                     line[strlen(line) - 1] = '\0';
@@ -2746,9 +2759,7 @@ int run_revert(int argc, char *const argv[]) {
         strcat(command, " > /dev/null 2>&1");
         system(command);
         printf(_SGR_GREENF "The revert has been done successfully.\n"_SGR_RESET);
-    }
-
-    else if (argc == 5) {
+    } else if (argc == 5) {
         if (strcmp(argv[2], "-m") != 0) {
             printf(_SGR_REDF "invalid command\n"_SGR_RESET);
             return 1;
@@ -2801,6 +2812,603 @@ int run_revert(int argc, char *const argv[]) {
         printf(_SGR_GREENF "The revert has been done successfully.\n"_SGR_RESET);
     }
 }
+
+int compare(const void *a, const void *b) {
+    return strcmp(*(char **) a, *(char **) b);
+}
+
+int run_tag(int argc, char *const argv[]) {
+    if (argc == 2) {
+        FILE *tags = fopen(path_maker(find_source(), ".kiwit/tag_names"), "r");
+        char *line = malloc(1000);
+        while (fgets(line, 1000, tags) != NULL) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            printf("%s\n", line);
+        }
+        fclose(tags);
+        return 1;
+    }
+    if (argc == 4 && strcmp(argv[2], "show") == 0){
+        char *line = malloc(1000);
+        FILE *all_tags = fopen(path_maker(find_source(), ".kiwit/tags"), "r");
+        int counter = 0;
+        int flag = 0;
+        char **tags = malloc(8 * sizeof(char *));
+        for (int i = 0; i < 7; ++i) {
+            tags[i] = malloc(1000);
+        }
+        while (fgets(line, 1000, all_tags) != NULL) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            strcpy(tags[counter % 6], line);
+            if (counter % 6 == 5) {
+                char *tag_name = malloc(1000);
+                strcpy(tag_name, tags[0]);
+                if (strstr(tag_name, argv[3]) != NULL) {
+                    for (int i = 0; i < 6; ++i) {
+                        printf("%s\n", tags[i]);
+                    }
+                    flag = 1;
+                }
+            }
+            counter++;
+        }
+        fclose(all_tags);
+        if (flag == 0) {
+            printf(_SGR_REDF "There is no tag with this word.\n"_SGR_RESET);
+        }
+        return 1;
+    }
+    bool is_f = false;
+    if (strcmp(argv[2], "-a") != 0) {
+        printf(_SGR_REDF "invalid command\n"_SGR_RESET);
+        return 1;
+    }
+    if (argc == 5 && strcmp(argv[4], "-f") == 0) {
+        is_f = true;
+    }
+    if (argc == 7 && strcmp(argv[6], "-f") == 0) {
+        is_f = true;
+    }
+    if (argc == 9 && strcmp(argv[8], "-f") == 0) {
+        is_f = true;
+    }
+    if (is_f == false) {
+        FILE *tag_names = fopen(path_maker(find_source(), ".kiwit/tag_names"), "r");
+        char *line = malloc(1000);
+        while (fgets(line, 1000, tag_names) != NULL) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            if (strcmp(line, argv[3]) == 0) {
+                printf(_SGR_REDF "This tag name is already exist.\n"_SGR_RESET);
+                return 1;
+            }
+        }
+        fclose(tag_names);
+    }
+    FILE *last_unique_commit_id = fopen(path_maker(find_source(), ".kiwit/commit_ID"), "r");
+    char *last_commit_id = malloc(1000);
+    fgets(last_commit_id, 1000, last_unique_commit_id);
+    if (last_commit_id[strlen(last_commit_id) - 1] == '\n') {
+        last_commit_id[strlen(last_commit_id) - 1] = '\0';
+    }
+    int last_commit_id_int = atoi(last_commit_id);
+    last_commit_id_int--;
+    fclose(last_unique_commit_id);
+    if (argc == 4) {
+        FILE *tag_names;
+        char *line = malloc(1000);
+        tag_names = fopen(path_maker(find_source(), ".kiwit/tag_names"), "r");
+        int counter = 0;
+        char *all_tags[1000];
+        while (fgets(line, 1000, tag_names) != NULL) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            all_tags[counter] = malloc(1000);
+            strcpy(all_tags[counter], line);
+            counter++;
+        }
+        fclose(tag_names);
+        all_tags[counter] = malloc(1000);
+        strcpy(all_tags[counter], argv[3]);
+        counter++;
+        if (counter != 0) {
+            qsort(all_tags, counter, sizeof(const char *), compare);
+            tag_names = fopen(path_maker(find_source(), ".kiwit/tag_names"), "w");
+            for (int i = 0; i < counter; ++i) {
+                fprintf(tag_names, "%s\n", all_tags[i]);
+            }
+            fclose(tag_names);
+        } else {
+            tag_names = fopen(path_maker(find_source(), ".kiwit/tag_names"), "w");
+            fprintf(tag_names, "%s\n", argv[3]);
+            fclose(tag_names);
+        }
+        FILE *tags_2 = fopen(path_maker(find_source(), ".kiwit/tags_2"), "w");
+        fprintf(tags_2, "tag %s\n", argv[3]);
+        fprintf(tags_2, "commit %d\n", last_commit_id_int);
+        FILE *config = fopen(path_maker(find_source(), ".kiwit/config"), "r");
+        char *line_2 = malloc(1000);
+        fgets(line_2, 1000, config);
+        if (line_2[strlen(line_2) - 1] == '\n') {
+            line_2[strlen(line_2) - 1] = '\0';
+        }
+        fprintf(tags_2, "Author: %s ", line_2);
+        fgets(line_2, 1000, config);
+        if (line_2[strlen(line_2) - 1] == '\n') {
+            line_2[strlen(line_2) - 1] = '\0';
+        }
+        fprintf(tags_2, "<%s>\n", line_2);
+        fclose(config);
+        time_t t = time(NULL);
+        struct tm tm = *localtime(&t);
+        fprintf(tags_2, "Date: %d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
+                tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+        fprintf(tags_2, "Message:\n");
+        fprintf(tags_2, "*-*\n");
+        fclose(tags_2);
+        FILE *tags = fopen(path_maker(find_source(), ".kiwit/tags"), "r");
+        tags_2 = fopen(path_maker(find_source(), ".kiwit/tags_2"), "a");
+        while (fgets(line, 1000, tags) != NULL) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            fprintf(tags_2, "%s\n", line);
+        }
+        fclose(tags);
+        fclose(tags_2);
+        remove(path_maker(find_source(), ".kiwit/tags"));
+        rename(path_maker(find_source(), ".kiwit/tags_2"), path_maker(find_source(), ".kiwit/tags"));
+        printf(_SGR_GREENF "The tag has been added successfully.\n"_SGR_RESET);
+    }
+    if (argc == 5 && strcmp(argv[4], "-f") == 0) {
+        char *line = malloc(1000);
+        FILE *all_tags = fopen(path_maker(find_source(), ".kiwit/tags"), "r");
+        FILE *tags_2 = fopen(path_maker(find_source(), ".kiwit/tags_2"), "w");
+        int counter = 0;
+        int flag = 0;
+        char **tags = malloc(8 * sizeof(char *));
+        for (int i = 0; i < 7; ++i) {
+            tags[i] = malloc(1000);
+        }
+        while (fgets(line, 1000, all_tags) != NULL) {
+            if (line[strlen(line) - 1] == '\n') {
+                line[strlen(line) - 1] = '\0';
+            }
+            strcpy(tags[counter % 6], line);
+            if (counter % 6 == 5) {
+                char *tag_name = malloc(1000);
+                strcpy(tag_name, tags[0]);
+                if (strstr(tag_name, argv[3]) != NULL) {
+                    fprintf(tags_2, "%s\n", tags[0]);
+                    fprintf(tags_2, "commit %d\n", last_commit_id_int);
+                    FILE *config = fopen(path_maker(find_source(), ".kiwit/config"), "r");
+                    char *line_2 = malloc(1000);
+                    fgets(line_2, 1000, config);
+                    if (line_2[strlen(line_2) - 1] == '\n') {
+                        line_2[strlen(line_2) - 1] = '\0';
+                    }
+                    fprintf(tags_2, "Author: %s ", line_2);
+                    fgets(line_2, 1000, config);
+                    if (line_2[strlen(line_2) - 1] == '\n') {
+                        line_2[strlen(line_2) - 1] = '\0';
+                    }
+                    fprintf(tags_2, "<%s>\n", line_2);
+                    fclose(config);
+                    time_t t = time(NULL);
+                    struct tm tm = *localtime(&t);
+                    fprintf(tags_2, "Date: %d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
+                            tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+                    fprintf(tags_2, "%s\n", tags[4]);
+                    fprintf(tags_2, "*-*\n");
+                    flag = 1;
+                } else {
+                    for (int i = 0; i < 6; ++i) {
+                        fprintf(tags_2, "%s\n", tags[i]);
+                    }
+                }
+            }
+            counter++;
+        }
+        fclose(all_tags);
+        fclose(tags_2);
+        remove(path_maker(find_source(), ".kiwit/tags"));
+        rename(path_maker(find_source(), ".kiwit/tags_2"), path_maker(find_source(), ".kiwit/tags"));
+        if (flag == 0) {
+            printf(_SGR_REDF "There is no tag with this word.\n"_SGR_RESET);
+        }
+    }
+    if (argc == 7 && strcmp(argv[6], "-f") == 0) {
+        if (strcmp(argv[4], "-m") == 0) {
+            char *line = malloc(1000);
+            FILE *all_tags = fopen(path_maker(find_source(), ".kiwit/tags"), "r");
+            FILE *tags_2 = fopen(path_maker(find_source(), ".kiwit/tags_2"), "w");
+            int counter = 0;
+            int flag = 0;
+            char **tags = malloc(8 * sizeof(char *));
+            for (int i = 0; i < 7; ++i) {
+                tags[i] = malloc(1000);
+            }
+            while (fgets(line, 1000, all_tags) != NULL) {
+                if (line[strlen(line) - 1] == '\n') {
+                    line[strlen(line) - 1] = '\0';
+                }
+                strcpy(tags[counter % 6], line);
+                if (counter % 6 == 5) {
+                    char *tag_name = malloc(1000);
+                    strcpy(tag_name, tags[0]);
+                    if (strstr(tag_name, argv[3]) != NULL) {
+                        fprintf(tags_2, "%s\n", tags[0]);
+                        fprintf(tags_2, "commit %d\n", last_commit_id_int);
+                        FILE *config = fopen(path_maker(find_source(), ".kiwit/config"), "r");
+                        char *line_2 = malloc(1000);
+                        fgets(line_2, 1000, config);
+                        if (line_2[strlen(line_2) - 1] == '\n') {
+                            line_2[strlen(line_2) - 1] = '\0';
+                        }
+                        fprintf(tags_2, "Author: %s ", line_2);
+                        fgets(line_2, 1000, config);
+                        if (line_2[strlen(line_2) - 1] == '\n') {
+                            line_2[strlen(line_2) - 1] = '\0';
+                        }
+                        fprintf(tags_2, "<%s>\n", line_2);
+                        fclose(config);
+                        time_t t = time(NULL);
+                        struct tm tm = *localtime(&t);
+                        fprintf(tags_2, "Date: %d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
+                                tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+                        fprintf(tags_2, "Message: %s\n", argv[5]);
+                        fprintf(tags_2, "*-*\n");
+                        flag = 1;
+                    } else {
+                        for (int i = 0; i < 6; ++i) {
+                            fprintf(tags_2, "%s\n", tags[i]);
+                        }
+                    }
+                }
+                counter++;
+            }
+            fclose(all_tags);
+            fclose(tags_2);
+            remove(path_maker(find_source(), ".kiwit/tags"));
+            rename(path_maker(find_source(), ".kiwit/tags_2"), path_maker(find_source(), ".kiwit/tags"));
+            if (flag == 0) {
+                printf(_SGR_REDF "There is no tag with this word.\n"_SGR_RESET);
+            }
+
+        }
+        if (strcmp(argv[4], "-c") == 0) {
+            char *line = malloc(1000);
+            FILE *all_tags = fopen(path_maker(find_source(), ".kiwit/tags"), "r");
+            FILE *tags_2 = fopen(path_maker(find_source(), ".kiwit/tags_2"), "w");
+            int counter = 0;
+            int flag = 0;
+            char **tags = malloc(8 * sizeof(char *));
+            for (int i = 0; i < 7; ++i) {
+                tags[i] = malloc(1000);
+            }
+            while (fgets(line, 1000, all_tags) != NULL) {
+                if (line[strlen(line) - 1] == '\n') {
+                    line[strlen(line) - 1] = '\0';
+                }
+                strcpy(tags[counter % 6], line);
+                if (counter % 6 == 5) {
+                    char *tag_name = malloc(1000);
+                    strcpy(tag_name, tags[0]);
+                    if (strstr(tag_name, argv[3]) != NULL) {
+                        fprintf(tags_2, "%s\n", tags[0]);
+                        fprintf(tags_2, "commit %s\n", argv[5]);
+                        FILE *config = fopen(path_maker(find_source(), ".kiwit/config"), "r");
+                        char *line_2 = malloc(1000);
+                        fgets(line_2, 1000, config);
+                        if (line_2[strlen(line_2) - 1] == '\n') {
+                            line_2[strlen(line_2) - 1] = '\0';
+                        }
+                        fprintf(tags_2, "Author: %s ", line_2);
+                        fgets(line_2, 1000, config);
+                        if (line_2[strlen(line_2) - 1] == '\n') {
+                            line_2[strlen(line_2) - 1] = '\0';
+                        }
+                        fprintf(tags_2, "<%s>\n", line_2);
+                        fclose(config);
+                        time_t t = time(NULL);
+                        struct tm tm = *localtime(&t);
+                        fprintf(tags_2, "Date: %d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
+                                tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+                        fprintf(tags_2, "%s\n", tags[4]);
+                        fprintf(tags_2, "*-*\n");
+                        flag = 1;
+                    } else {
+                        for (int i = 0; i < 6; ++i) {
+                            fprintf(tags_2, "%s\n", tags[i]);
+                        }
+                    }
+                }
+                counter++;
+            }
+            fclose(all_tags);
+            fclose(tags_2);
+            remove(path_maker(find_source(), ".kiwit/tags"));
+            rename(path_maker(find_source(), ".kiwit/tags_2"), path_maker(find_source(), ".kiwit/tags"));
+            if (flag == 0) {
+                printf(_SGR_REDF "There is no tag with this word.\n"_SGR_RESET);
+            }
+
+        }
+    }
+    if (argc == 9 && strcmp(argv[8], "-f") == 0) {
+        if (strcmp(argv[4], "-m") == 0 && strcmp(argv[6], "-c") == 0) {
+            char *line = malloc(1000);
+            FILE *all_tags = fopen(path_maker(find_source(), ".kiwit/tags"), "r");
+            FILE *tags_2 = fopen(path_maker(find_source(), ".kiwit/tags_2"), "w");
+            int counter = 0;
+            int flag = 0;
+            char **tags = malloc(8 * sizeof(char *));
+            for (int i = 0; i < 7; ++i) {
+                tags[i] = malloc(1000);
+            }
+            while (fgets(line, 1000, all_tags) != NULL) {
+                if (line[strlen(line) - 1] == '\n') {
+                    line[strlen(line) - 1] = '\0';
+                }
+                strcpy(tags[counter % 6], line);
+                if (counter % 6 == 5) {
+                    char *tag_name = malloc(1000);
+                    strcpy(tag_name, tags[0]);
+                    if (strstr(tag_name, argv[3]) != NULL) {
+                        fprintf(tags_2, "%s\n", tags[0]);
+                        fprintf(tags_2, "commit %s\n", argv[7]);
+                        FILE *config = fopen(path_maker(find_source(), ".kiwit/config"), "r");
+                        char *line_2 = malloc(1000);
+                        fgets(line_2, 1000, config);
+                        if (line_2[strlen(line_2) - 1] == '\n') {
+                            line_2[strlen(line_2) - 1] = '\0';
+                        }
+                        fprintf(tags_2, "Author: %s ", line_2);
+                        fgets(line_2, 1000, config);
+                        if (line_2[strlen(line_2) - 1] == '\n') {
+                            line_2[strlen(line_2) - 1] = '\0';
+                        }
+                        fprintf(tags_2, "<%s>\n", line_2);
+                        fclose(config);
+                        time_t t = time(NULL);
+                        struct tm tm = *localtime(&t);
+                        fprintf(tags_2, "Date: %d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
+                                tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+                        fprintf(tags_2, "Message: %s\n", argv[5]);
+                        fprintf(tags_2, "*-*\n");
+                        flag = 1;
+                    } else {
+                        for (int i = 0; i < 6; ++i) {
+                            fprintf(tags_2, "%s\n", tags[i]);
+                        }
+                    }
+                }
+                counter++;
+            }
+            fclose(all_tags);
+            fclose(tags_2);
+            remove(path_maker(find_source(), ".kiwit/tags"));
+            rename(path_maker(find_source(), ".kiwit/tags_2"), path_maker(find_source(), ".kiwit/tags"));
+            if (flag == 0) {
+                printf(_SGR_REDF "There is no tag with this word.\n"_SGR_RESET);
+            }
+
+        }
+    }
+    if (argc == 6) {
+        if (strcmp(argv[4], "-m") == 0) {
+            FILE *tag_names;
+            char *line = malloc(1000);
+            tag_names = fopen(path_maker(find_source(), ".kiwit/tag_names"), "r");
+            int counter = 0;
+            char *all_tags[1000];
+            while (fgets(line, 1000, tag_names) != NULL) {
+                if (line[strlen(line) - 1] == '\n') {
+                    line[strlen(line) - 1] = '\0';
+                }
+                all_tags[counter] = malloc(1000);
+                strcpy(all_tags[counter], line);
+                counter++;
+            }
+            fclose(tag_names);
+            all_tags[counter] = malloc(1000);
+            strcpy(all_tags[counter], argv[3]);
+            counter++;
+            if (counter != 0) {
+                qsort(all_tags, counter, sizeof(const char *), compare);
+                tag_names = fopen(path_maker(find_source(), ".kiwit/tag_names"), "w");
+                for (int i = 0; i < counter; ++i) {
+                    fprintf(tag_names, "%s\n", all_tags[i]);
+                }
+                fclose(tag_names);
+            } else {
+                tag_names = fopen(path_maker(find_source(), ".kiwit/tag_names"), "w");
+                fprintf(tag_names, "%s\n", argv[3]);
+                fclose(tag_names);
+            }
+            FILE *tags_2 = fopen(path_maker(find_source(), ".kiwit/tags_2"), "w");
+            fprintf(tags_2, "tag %s\n", argv[3]);
+            fprintf(tags_2, "commit %d\n", last_commit_id_int);
+            FILE *config = fopen(path_maker(find_source(), ".kiwit/config"), "r");
+            char *line_2 = malloc(1000);
+            fgets(line_2, 1000, config);
+            if (line_2[strlen(line_2) - 1] == '\n') {
+                line_2[strlen(line_2) - 1] = '\0';
+            }
+            fprintf(tags_2, "Author: %s ", line_2);
+            fgets(line_2, 1000, config);
+            if (line_2[strlen(line_2) - 1] == '\n') {
+                line_2[strlen(line_2) - 1] = '\0';
+            }
+            fprintf(tags_2, "<%s>\n", line_2);
+            fclose(config);
+            time_t t = time(NULL);
+            struct tm tm = *localtime(&t);
+            fprintf(tags_2, "Date: %d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
+                    tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+            fprintf(tags_2, "Message: %s\n", argv[5]);
+            fprintf(tags_2, "*-*\n");
+            fclose(tags_2);
+            FILE *tags = fopen(path_maker(find_source(), ".kiwit/tags"), "r");
+            tags_2 = fopen(path_maker(find_source(), ".kiwit/tags_2"), "a");
+            while (fgets(line, 1000, tags) != NULL) {
+                if (line[strlen(line) - 1] == '\n') {
+                    line[strlen(line) - 1] = '\0';
+                }
+                fprintf(tags_2, "%s\n", line);
+            }
+            fclose(tags);
+            fclose(tags_2);
+            remove(path_maker(find_source(), ".kiwit/tags"));
+            rename(path_maker(find_source(), ".kiwit/tags_2"), path_maker(find_source(), ".kiwit/tags"));
+            printf(_SGR_GREENF "The tag has been added successfully.\n"_SGR_RESET);
+
+        }
+        if (strcmp(argv[4], "-c") == 0) {
+            FILE *tag_names;
+            char *line = malloc(1000);
+            tag_names = fopen(path_maker(find_source(), ".kiwit/tag_names"), "r");
+            int counter = 0;
+            char *all_tags[1000];
+            while (fgets(line, 1000, tag_names) != NULL) {
+                if (line[strlen(line) - 1] == '\n') {
+                    line[strlen(line) - 1] = '\0';
+                }
+                all_tags[counter] = malloc(1000);
+                strcpy(all_tags[counter], line);
+                counter++;
+            }
+            fclose(tag_names);
+            all_tags[counter] = malloc(1000);
+            strcpy(all_tags[counter], argv[3]);
+            counter++;
+            if (counter != 0) {
+                qsort(all_tags, counter, sizeof(const char *), compare);
+                tag_names = fopen(path_maker(find_source(), ".kiwit/tag_names"), "w");
+                for (int i = 0; i < counter; ++i) {
+                    fprintf(tag_names, "%s\n", all_tags[i]);
+                }
+                fclose(tag_names);
+            } else {
+                tag_names = fopen(path_maker(find_source(), ".kiwit/tag_names"), "w");
+                fprintf(tag_names, "%s\n", argv[3]);
+                fclose(tag_names);
+            }
+            FILE *tags_2 = fopen(path_maker(find_source(), ".kiwit/tags_2"), "w");
+            fprintf(tags_2, "tag %s\n", argv[3]);
+            fprintf(tags_2, "commit %s\n", argv[5]);
+            FILE *config = fopen(path_maker(find_source(), ".kiwit/config"), "r");
+            char *line_2 = malloc(1000);
+            fgets(line_2, 1000, config);
+            if (line_2[strlen(line_2) - 1] == '\n') {
+                line_2[strlen(line_2) - 1] = '\0';
+            }
+            fprintf(tags_2, "Author: %s ", line_2);
+            fgets(line_2, 1000, config);
+            if (line_2[strlen(line_2) - 1] == '\n') {
+                line_2[strlen(line_2) - 1] = '\0';
+            }
+            fprintf(tags_2, "<%s>\n", line_2);
+            fclose(config);
+            time_t t = time(NULL);
+            struct tm tm = *localtime(&t);
+            fprintf(tags_2, "Date: %d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
+                    tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+            fprintf(tags_2, "Message:\n");
+            fprintf(tags_2, "*-*\n");
+            fclose(tags_2);
+            FILE *tags = fopen(path_maker(find_source(), ".kiwit/tags"), "r");
+            tags_2 = fopen(path_maker(find_source(), ".kiwit/tags_2"), "a");
+            while (fgets(line, 1000, tags) != NULL) {
+                if (line[strlen(line) - 1] == '\n') {
+                    line[strlen(line) - 1] = '\0';
+                }
+                fprintf(tags_2, "%s\n", line);
+            }
+            fclose(tags);
+            fclose(tags_2);
+            remove(path_maker(find_source(), ".kiwit/tags"));
+            rename(path_maker(find_source(), ".kiwit/tags_2"), path_maker(find_source(), ".kiwit/tags"));
+            printf(_SGR_GREENF "The tag has been added successfully.\n"_SGR_RESET);
+        }
+    }
+    if (argc == 8) {
+        if (strcmp(argv[4], "-m") == 0 && strcmp(argv[6], "-c") == 0) {
+            FILE *tag_names;
+            char *line = malloc(1000);
+            tag_names = fopen(path_maker(find_source(), ".kiwit/tag_names"), "r");
+            int counter = 0;
+            char *all_tags[1000];
+            while (fgets(line, 1000, tag_names) != NULL) {
+                if (line[strlen(line) - 1] == '\n') {
+                    line[strlen(line) - 1] = '\0';
+                }
+                all_tags[counter] = malloc(1000);
+                strcpy(all_tags[counter], line);
+                counter++;
+            }
+            fclose(tag_names);
+            all_tags[counter] = malloc(1000);
+            strcpy(all_tags[counter], argv[3]);
+            counter++;
+            if (counter != 0) {
+                qsort(all_tags, counter, sizeof(const char *), compare);
+                tag_names = fopen(path_maker(find_source(), ".kiwit/tag_names"), "w");
+                for (int i = 0; i < counter; ++i) {
+                    fprintf(tag_names, "%s\n", all_tags[i]);
+                }
+                fclose(tag_names);
+            } else {
+                tag_names = fopen(path_maker(find_source(), ".kiwit/tag_names"), "w");
+                fprintf(tag_names, "%s\n", argv[3]);
+                fclose(tag_names);
+            }
+            FILE *tags_2 = fopen(path_maker(find_source(), ".kiwit/tags_2"), "w");
+            fprintf(tags_2, "tag %s\n", argv[3]);
+            fprintf(tags_2, "commit %s\n", argv[7]);
+            FILE *config = fopen(path_maker(find_source(), ".kiwit/config"), "r");
+            char *line_2 = malloc(1000);
+            fgets(line_2, 1000, config);
+            if (line_2[strlen(line_2) - 1] == '\n') {
+                line_2[strlen(line_2) - 1] = '\0';
+            }
+            fprintf(tags_2, "Author: %s ", line_2);
+            fgets(line_2, 1000, config);
+            if (line_2[strlen(line_2) - 1] == '\n') {
+                line_2[strlen(line_2) - 1] = '\0';
+            }
+            fprintf(tags_2, "<%s>\n", line_2);
+            fclose(config);
+            time_t t = time(NULL);
+            struct tm tm = *localtime(&t);
+            fprintf(tags_2, "Date: %d-%02d-%02d %02d:%02d:%02d\n", tm.tm_year + 1900, tm.tm_mon + 1,
+                    tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+            fprintf(tags_2, "Message: %s\n", argv[5]);
+            fprintf(tags_2, "*-*\n");
+            fclose(tags_2);
+            FILE *tags = fopen(path_maker(find_source(), ".kiwit/tags"), "r");
+            tags_2 = fopen(path_maker(find_source(), ".kiwit/tags_2"), "a");
+            while (fgets(line, 1000, tags) != NULL) {
+                if (line[strlen(line) - 1] == '\n') {
+                    line[strlen(line) - 1] = '\0';
+                }
+                fprintf(tags_2, "%s\n", line);
+            }
+            fclose(tags);
+            fclose(tags_2);
+            remove(path_maker(find_source(), ".kiwit/tags"));
+            rename(path_maker(find_source(), ".kiwit/tags_2"), path_maker(find_source(), ".kiwit/tags"));
+            printf(_SGR_GREENF "The tag has been added successfully.\n"_SGR_RESET);
+        }
+    }
+}
+
 
 int main(int argc, const char *argv[]) {
     if (argc < 2) {
@@ -2895,6 +3503,8 @@ int main(int argc, const char *argv[]) {
         return run_status(argc, argv);
     } else if (strcmp(command, "revert") == 0 && (argc == 3 || argc == 5)) {
         return run_revert(argc, argv);
+    } else if (strcmp(command, "tag") == 0 && argc >= 2) {
+        return run_tag(argc, argv);
     } else {
         printf(_SGR_REDB "invalid command\n"_SGR_RESET);
     }
