@@ -1,3 +1,6 @@
+//Ali Moghadasi
+//402106542
+
 // hints for me:
 // line 0 = username
 // line 1 = email
@@ -237,10 +240,10 @@ void delete_files(char *source_dir) {
             if (entry->d_type == DT_DIR) {
                 delete_files(file_path); // Call function recursively on the directory
                 rmdir(file_path);
-                printf("DR Removed %s\n", file_path);
+                //printf("DR Removed %s\n", file_path);
             } else {
                 remove(file_path);
-                printf("RE Removed %s\n", file_path);
+                //printf("RE Removed %s\n", file_path);
             }
             free(file_path);
         }
@@ -309,7 +312,7 @@ int create_configs(char *username, char *email) {
     fclose(file);
 
     file = fopen(".kiwit/all_hooks", "w");
-    fprintf(file, "todo-check\neof-blank-space\nformat-check\nbalance-braces\nfile-size-check\ncharacter-limit\n");
+    fprintf(file, "todo-check\neof-blank-space\nformat-check\nbalance-braces\nfile-size-check\ncharacter-limit\nstatic-error-check\ntime-limit");
     fclose(file);
 
     file = fopen(".kiwit/applied_hooks", "w");
@@ -680,7 +683,6 @@ int run_add_file(FILE *output_file) {
             line[strlen(line) - 1] = '\0';
         }
         //printf("%s\n", line);
-        // write a strtok() func on the line
         char *file_path = malloc(2000);
         strcpy(file_path, line);
         char *file_name = malloc(2000);
@@ -1028,7 +1030,7 @@ int run_reset_file() {
 
         char *file_address_tmp = malloc(2000);
         strcpy(file_address_tmp, main_line);
-        printf("file_address_tmp: %s\n", file_address_tmp);
+        //printf("file_address_tmp: %s\n", file_address_tmp);
         FILE *tmp_output = fopen(path_maker(find_source(), ".kiwit/tmp_output"), "w");
         int flag_file_address_found = 0;
         rewind(staged_files_address2);
@@ -2343,7 +2345,7 @@ int run_checkout(int argc, char *const argv[]) {
             printf("The branch name is: %s\n", dest_branch_name);
         }
     } else if (strcmp(argv[2], "HEAD") == 0) {
-        printf("salam\n");
+        //printf("salam\n");
         char *current_branch_address = malloc(1000);
 
         FILE *current_branch_file = fopen(path_maker(find_source(), ".kiwit/current_branch"), "r");
@@ -2466,7 +2468,7 @@ int run_checkout(int argc, char *const argv[]) {
         char *temp = malloc(2000);
         strcpy(temp, dest_commit_address);
         truncate_path(temp);
-        printf("%s\n", temp);
+        //printf("%s\n", temp);
         FILE *current_branch = fopen(path_maker(find_source(), ".kiwit/current_branch"), "w");
         fprintf(current_branch, "%s\n", temp);
         fclose(current_branch);
@@ -2799,7 +2801,6 @@ int run_revert(int argc, char *const argv[]) {
             return 1;
         }
         if (strstr(argv[4], "HEAD") != NULL) {
-            printf("ssdsadsdasd\n");
             char *number = malloc(1000);
             sscanf(number, "HEAD-%s", argv[4]);
             int number_int = atoi(number);
@@ -3688,6 +3689,57 @@ int character_limit(char *file_path) {
     return 1;
 }
 
+int static_error_check(char *file_path) {
+    FILE *formats = fopen(path_maker(find_source(), ".kiwit/formats"), "r");
+    int flag = 0;
+    char *format = malloc(1000);
+    while (fgets(format, 1000, formats) != NULL) {
+        if (format[strlen(format) - 1] == '\n') {
+            format[strlen(format) - 1] = '\0';
+        }
+
+        if (strcmp(format, ".c") == 0 || strcmp(format, ".cpp") == 0) {
+            if (strstr(file_path, format) != NULL) {
+                flag = 1;
+                break;
+            }
+        }
+    }
+    if (flag == 0) {
+        return 2;
+    }
+    char *command = malloc(1000);
+    strcpy(command, "gcc ");
+    strcat(command, file_path);
+    strcat(command, " -o jsgflhsadgflajswgfelgfsj");
+    int status = system(command);
+    if (status != 0) {
+        return 0;
+    }
+    return 1;
+}
+
+//int check_duration(const char* filename) {
+//    SF_INFO info;
+//    SNDFILE *sf = sf_open(filename, SFM_READ, &info);
+//    if (sf == NULL) {
+//        printf("Failed to open the file.\n");
+//        return -1;
+//    }
+//
+//    // Calculate duration in seconds
+//    double duration = (double)info.frames / info.samplerate;
+//
+//    sf_close(sf);
+//
+//    // Check if duration is more than 10 minutes
+//    if (duration > 600) {
+//        return 0;
+//    } else {
+//        return 1;
+//    }
+//}
+
 int run_pre_commit(int argc, const char *argv[]) {
     if (argc < 2) {
         printf(_SGR_REDF "invalid command\n"_SGR_RESET);
@@ -3849,6 +3901,26 @@ int run_pre_commit(int argc, const char *argv[]) {
                         printf(_SGR_YELLOWF "%s...............SKIPPED\n"_SGR_RESET, line);
                     }
                 }
+                if (strcmp(line, "static-error-check") == 0) {
+                    int checker = static_error_check(file_path);
+                    if (checker == 0) {
+                        printf(_SGR_REDF "%s............FAILED\n"_SGR_RESET, line);
+                    } else if (checker == 1) {
+                        printf(_SGR_GREENF "%s............PASSED\n"_SGR_RESET, line);
+                    } else if (checker == 2) {
+                        printf(_SGR_YELLOWF "%s............SKIPPED\n"_SGR_RESET, line);
+                    }
+                }
+                if (strcmp(line, "time-limit") == 0) {
+                    int checker = static_error_check(file_path);
+                    if (checker == 0) {
+                        printf(_SGR_REDF "%s............FAILED\n"_SGR_RESET, line);
+                    } else if (checker == 1) {
+                        printf(_SGR_GREENF "%s............PASSED\n"_SGR_RESET, line);
+                    } else if (checker == 2) {
+                        printf(_SGR_YELLOWF "%s............SKIPPED\n"_SGR_RESET, line);
+                    }
+                }
             }
         }
         fclose(applied_hooks);
@@ -3876,7 +3948,7 @@ int run_grep(int argc, const char *argv[]) {
     strcpy(word, argv[5]);
     char line[1024];
     int lineNumber = 1;
-    if (argc == 6){
+    if (argc == 6) {
         while (fgets(line, sizeof(line), file) != NULL) {
             if (strstr(line, word) != NULL) {
                 for (int i = 0; i < strlen(line); i++) {
@@ -3905,8 +3977,7 @@ int run_grep(int argc, const char *argv[]) {
             }
             lineNumber++;
         }
-    }
-    else if (strcmp(argv[6], "-n") == 0 && argc == 7) {
+    } else if (strcmp(argv[6], "-n") == 0 && argc == 7) {
         while (fgets(line, sizeof(line), file) != NULL) {
             if (strstr(line, word) != NULL) {
                 //printf("%d: %s", lineNumber, line);
@@ -3939,6 +4010,90 @@ int run_grep(int argc, const char *argv[]) {
         }
     }
     fclose(file);
+}
+
+int run_diff(int argc, const char *argv[]) {
+    if (argc == 5) {
+        char *file_path_1 = path_maker(find_source(), argv[3]);
+        char *file_path_2 = path_maker(find_source(), argv[4]);
+        FILE *file1 = fopen(file_path_1, "r");
+        FILE *file2 = fopen(file_path_2, "r");
+
+        if (file1 == NULL || file2 == NULL) {
+            printf("Unable to open file.\n");
+            return 1;
+        }
+
+        char line1[1024], line2[1024];
+        int lineNumber1 = 1, lineNumber2 = 1;
+
+        while (fgets(line1, sizeof(line1), file1) != NULL && fgets(line2, sizeof(line2), file2) != NULL) {
+            if (strcmp(line1, "\n") != 0 && strcmp(line2, "\n") != 0) {
+                if (strcmp(line1, line2) != 0) {
+                    if (line1[strlen(line1) - 1] == '\n') {
+                        line1[strlen(line1) - 1] = '\0';
+                    }
+                    if (line2[strlen(line2) - 1] == '\n') {
+                        line2[strlen(line2) - 1] = '\0';
+                    }
+                    printf("«««««\n");
+                    printf("%s-%d\n", file_name_maker(file_path_1), lineNumber1);
+                    printf(_C_L_PURPLE"%s\n"_SGR_RESET, line1);
+                    printf("%s-%d\n", file_name_maker(file_path_2), lineNumber2);
+                    printf(_SGR_YELLOWF"%s\n"_SGR_RESET, line2);
+                    printf("»»»»»\n");
+                }
+            }
+            lineNumber1++;
+            lineNumber2++;
+        }
+
+        fclose(file1);
+        fclose(file2);
+    } else if (argc == 11) {
+        char *file_path_1 = path_maker(find_source(), argv[3]);
+        char *file_path_2 = path_maker(find_source(), argv[4]);
+        int begin1 = atoi(argv[6]);
+        int end1 = atoi(argv[7]);
+        int begin2 = atoi(argv[9]);
+        int end2 = atoi(argv[10]);
+        FILE *file1 = fopen(file_path_1, "r");
+        FILE *file2 = fopen(file_path_2, "r");
+
+        if (file1 == NULL || file2 == NULL) {
+            printf("Unable to open file.\n");
+            return 1;
+        }
+
+        char line1[1024], line2[1024];
+        int lineNumber1 = 1, lineNumber2 = 1;
+
+        while (fgets(line1, sizeof(line1), file1) != NULL && fgets(line2, sizeof(line2), file2) != NULL) {
+            if (lineNumber1 >= begin1 && lineNumber1 <= end1 && lineNumber2 >= begin2 && lineNumber2 <= end2) {
+                if (strcmp(line1, "\n") != 0 && strcmp(line2, "\n") != 0) {
+                    if (strcmp(line1, line2) != 0) {
+                        if (line2[strlen(line2) - 1] == '\n') {
+                            line2[strlen(line2) - 1] = '\0';
+                        }
+                        if (line1[strlen(line1) - 1] == '\n') {
+                            line1[strlen(line1) - 1] = '\0';
+                        }
+                        printf("«««««\n");
+                        printf("%s-%d\n", file_name_maker(file_path_1), lineNumber1);
+                        printf(_C_L_PURPLE"%s\n"_SGR_RESET, line1);
+                        printf("%s-%d\n", file_name_maker(file_path_2), lineNumber2);
+                        printf(_SGR_YELLOWF"%s\n"_SGR_RESET, line2);
+                        printf("»»»»»\n");
+                    }
+                }
+            }
+            lineNumber1++;
+            lineNumber2++;
+        }
+
+        fclose(file1);
+        fclose(file2);
+    }
 }
 
 int main(int argc, const char *argv[]) {
@@ -4040,6 +4195,8 @@ int main(int argc, const char *argv[]) {
         return run_pre_commit(argc, argv);
     } else if (strcmp(command, "grep") == 0 && argc >= 6) {
         return run_grep(argc, argv);
+    } else if (strcmp(command, "diff") == 0 && argc >= 5) {
+        return run_diff(argc, argv);
     } else {
         printf(_SGR_REDB "invalid command\n"_SGR_RESET);
     }
