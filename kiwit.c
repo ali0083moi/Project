@@ -3851,8 +3851,95 @@ int run_pre_commit(int argc, const char *argv[]) {
                 }
             }
         }
-
+        fclose(applied_hooks);
+        fclose(stage);
     }
+}
+
+int run_grep(int argc, const char *argv[]) {
+    if (strcmp(argv[2], "-f") != 0) {
+        printf("Invalid command.\n");
+        return 1;
+    }
+    if (strcmp(argv[4], "-p") != 0) {
+        printf("Invalid command.\n");
+        return 1;
+    }
+    char *filePath = malloc(2000);
+    strcpy(filePath, path_maker(find_source(), argv[3]));
+    char *word = malloc(1000);
+    FILE *file = fopen(filePath, "r");
+    if (file == NULL) {
+        printf("Unable to open file.\n");
+        return 1;
+    }
+    strcpy(word, argv[5]);
+    char line[1024];
+    int lineNumber = 1;
+    if (argc == 6){
+        while (fgets(line, sizeof(line), file) != NULL) {
+            if (strstr(line, word) != NULL) {
+                for (int i = 0; i < strlen(line); i++) {
+                    if (line[i] == word[0]) {
+                        int flag = 1;
+                        for (int j = 0; j < strlen(word); j++) {
+                            if (line[i + j] != word[j]) {
+                                flag = 0;
+                                break;
+                            }
+                        }
+                        if (flag == 1) {
+                            printf(_SGR_GREENF);
+                            for (int j = 0; j < strlen(word); j++) {
+                                printf("%c", line[i + j]);
+                            }
+                            printf(_SGR_RESET);
+                            i += strlen(word) - 1;
+                        } else {
+                            printf("%c", line[i]);
+                        }
+                    } else {
+                        printf("%c", line[i]);
+                    }
+                }
+            }
+            lineNumber++;
+        }
+    }
+    return 1;
+    if (strcmp(argv[6], "-n") == 0 && argc == 7) {
+        while (fgets(line, sizeof(line), file) != NULL) {
+            if (strstr(line, word) != NULL) {
+                //printf("%d: %s", lineNumber, line);
+                printf(_C_L_PURPLE"%d: "_SGR_RESET, lineNumber);
+                for (int i = 0; i < strlen(line); i++) {
+                    if (line[i] == word[0]) {
+                        int flag = 1;
+                        for (int j = 0; j < strlen(word); j++) {
+                            if (line[i + j] != word[j]) {
+                                flag = 0;
+                                break;
+                            }
+                        }
+                        if (flag == 1) {
+                            printf(_SGR_GREENF);
+                            for (int j = 0; j < strlen(word); j++) {
+                                printf("%c", line[i + j]);
+                            }
+                            printf(_SGR_RESET);
+                            i += strlen(word) - 1;
+                        } else {
+                            printf("%c", line[i]);
+                        }
+                    } else {
+                        printf("%c", line[i]);
+                    }
+                }
+            }
+            lineNumber++;
+        }
+    }
+    fclose(file);
 }
 
 int main(int argc, const char *argv[]) {
@@ -3952,6 +4039,8 @@ int main(int argc, const char *argv[]) {
         return run_tag(argc, argv);
     } else if (strcmp(command, "pre-commit") == 0) {
         return run_pre_commit(argc, argv);
+    } else if (strcmp(command, "grep") == 0 && argc >= 6) {
+        return run_grep(argc, argv);
     } else {
         printf(_SGR_REDB "invalid command\n"_SGR_RESET);
     }
